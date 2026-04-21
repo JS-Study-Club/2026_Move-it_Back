@@ -23,8 +23,7 @@ import { PracticeModule } from './practice/practice.module';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        // 배포가 아닐 때만 synchronize 활성화
-        synchronize: configService.get<string>('NODE_ENV') !== 'production', 
+        synchronize: true, // 개발 환경에서는 true, 배포 환경에서는 false로 설정하는 것이 좋습니다. 
       }),
     }), AuthModule, UserModule, ChallengeModule, PracticeModule,],
   controllers: [AppController],
