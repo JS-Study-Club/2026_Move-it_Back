@@ -7,6 +7,9 @@ import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { ChallengeModule } from './challenge/challenge.module';
 import { PracticeModule } from './practice/practice.module';
+import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 @Module({
   imports: [ ConfigModule.forRoot({
@@ -27,6 +30,15 @@ import { PracticeModule } from './practice/practice.module';
       }),
     }), AuthModule, UserModule, ChallengeModule, PracticeModule,],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService,
+    {
+      provide: APP_FILTER,
+      useClass: HttpExceptionFilter, // 전역 필터로 사용할 클래스 지정
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TransformInterceptor,
+    }
+  ],
 })
 export class AppModule {}
