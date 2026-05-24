@@ -13,7 +13,7 @@ import { lowerCaseTransformer } from '../../utils/transformers/lower-case.transf
 export class CreateUserDto {
 	@ApiProperty({ example: 'John', type: String })
 	@IsNotEmpty()
-	userName : string;
+	userName: string;
 	
 	@ApiProperty({ example: 'test1@example.com', type: String })
 	@Transform(lowerCaseTransformer)
