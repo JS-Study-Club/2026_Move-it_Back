@@ -1,6 +1,6 @@
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { User } from './user.entity';
-import { Scope } from 'node_modules/@nestjs/common';
+import { Challenge } from '../../challenge/entities/challenge.entity';
 
 @Entity('user_challenges')
 export class UserChallenge {
@@ -10,6 +10,10 @@ export class UserChallenge {
     @ManyToOne(() => User, user => user.challenges)
     @JoinColumn({ name: 'user_id' })
     users!: User;
+    
+    @ManyToOne(() => Challenge)
+    @JoinColumn({ name: 'challenge_id' })
+    challenge!: Challenge;
 
     @Column({ type: 'json' })
     data!: JSON;
