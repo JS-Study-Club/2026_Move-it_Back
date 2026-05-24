@@ -25,4 +25,22 @@ export class ChallengeController {
   async searchChallenges(@Query('keyword') keyword: string) {
     return await this.challengeService.searchChallenges(keyword);
   }
+
+  @Get('recommend_keyword')
+  @ApiOperation({ summary: '추천 검색어 목록 반환' })
+  async getRecommendKeywords() {
+    return await this.challengeService.getRecommendKeywords();
+  }
+
+  @Get('suggest/yearly')
+  @ApiOperation({ summary: '연간 챌린지 추천' })
+  async getYearlyChallenges(@Query('limit') limit: number = 10) {
+    return await this.challengeService.getYearlyChallenges(limit);
+  }
+
+  @Get('suggest/daily')
+  @ApiOperation({ summary: '일간 챌린지 추천' })
+  async getDailyChallenges(@Query('limit') limit: number = 10) {
+    return await this.challengeService.getDailyChallenges(limit);
+  }
 }

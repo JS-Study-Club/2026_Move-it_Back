@@ -1,6 +1,8 @@
-import { Entity, Column, PrimaryGeneratedColumn, UpdateDateColumn, CreateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, UpdateDateColumn, CreateDateColumn, ManyToOne, OneToOne, JoinColumn } from 'typeorm';
+import { ChallengeMusic } from './challenge-music.entity';
+import { ChallengeBodyData } from './challenge-body-data.entity';
 
-@Entity()
+@Entity('challenges')
 export class Challenge {
   @PrimaryGeneratedColumn()
   id!: number;
@@ -9,25 +11,13 @@ export class Challenge {
   name!: string;
 
   @Column()
-  genre!: string;
-
-  @Column()
-  artist!: string;
-
-  @Column()
-  length!: number;
-
-  @Column()
-  music_url!: string;
-
-  @Column()
   album_art_url!: string;
 
   @Column({ default: 0 })
   view_count!: number;
 
-  @Column({ nullable: true, type: 'date' })
-  release_date?: Date;
+  @Column({ default: 0 })
+  like_count!: number;
 
   @Column()
   description!: string;
@@ -41,5 +31,11 @@ export class Challenge {
   @UpdateDateColumn()
   updatedAt!: Date;
 
-  
+  @ManyToOne(() => ChallengeMusic, music => music.challenges, { cascade: true, eager: true })
+  @JoinColumn({ name: 'music_id' })
+  music!: ChallengeMusic;
+
+  @OneToOne(() => ChallengeBodyData, bodyData => bodyData.challenge, { cascade: true, eager: true })
+  @JoinColumn({ name: 'body_data_id' })
+  body_data!: ChallengeBodyData;
 }

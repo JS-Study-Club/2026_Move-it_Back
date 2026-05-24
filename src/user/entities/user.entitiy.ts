@@ -32,8 +32,7 @@ export class User {
   @CreateDateColumn() 
   createdAt: Date;
 
-  @Column('varchar', {length:255})
-  refreshToken: string;
+ 
 
   // @ManyToOne(() => TeacherCharacter, (teacher) => teacher.users)
   // @JoinColumn({ name: 'teacher_character_id' }) 
