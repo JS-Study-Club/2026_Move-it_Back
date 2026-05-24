@@ -1,15 +1,16 @@
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { ValidationPipe } from '@nestjs/common';
+import { ClassSerializerInterceptor, ValidationPipe } from 'node_modules/@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-    app.useGlobalPipes(new ValidationPipe({
+  // 유효성 검사
+  app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
     forbidNonWhitelisted: true,
-    transform: true,
+    transform: true
   }));
 
   // 1. Swagger 문서 설정 (DocumentBuilder)
@@ -25,6 +26,8 @@ async function bootstrap() {
 
   // http://localhost:3000/api-docs)
   SwaggerModule.setup('api-docs', app, document);
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();

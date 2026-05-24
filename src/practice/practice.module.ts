@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PracticeService } from './practice.service';
 import { PracticeController } from './practice.controller';
-import { Practice } from './entities/practice.entities';
+import { Practice } from './entities/practice.entity';
 import { ChallengeBodyData } from '../challenge/entities/challenge-body-data.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
