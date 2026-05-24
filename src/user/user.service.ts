@@ -1,13 +1,10 @@
 import { HttpStatus, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
-import { Injectable } from '@nestjs/common';
-import { User } from "./entities/user.entity";
-import { UserRepository } from './user.repository';
 import * as bcrypt from "bcrypt";
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { CreateUserDto } from '@/user/dto/create-user.dto';
-import { User } from "./entities/user.entitiy";
+import { User } from "./entities/user.entity";
 import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
