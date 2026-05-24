@@ -2,7 +2,7 @@ import { Entity, Column, PrimaryGeneratedColumn, UpdateDateColumn, CreateDateCol
 import { ChallengeMusic } from './challenge-music.entity';
 import { ChallengeBodyData } from './challenge-body-data.entity';
 
-@Entity()
+@Entity('challenges')
 export class Challenge {
   @PrimaryGeneratedColumn()
   id!: number;

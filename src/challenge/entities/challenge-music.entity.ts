@@ -1,7 +1,7 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 import { Challenge } from './challenge.entity';
 
-@Entity()
+@Entity('challenge_music')
 export class ChallengeMusic {
   @PrimaryGeneratedColumn()
   id!: number;
