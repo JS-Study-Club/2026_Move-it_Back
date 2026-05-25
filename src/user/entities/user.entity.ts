@@ -5,7 +5,7 @@ import { UserChallenge } from './user_challenge.entity';
 
 @Entity('users')
 export class User {
-  @PrimaryGeneratedColumn('uuid') 
+  @PrimaryGeneratedColumn()
   id!: string;
 
   @Column('varchar', {length:32})

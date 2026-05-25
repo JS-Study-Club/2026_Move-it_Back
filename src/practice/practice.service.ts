@@ -5,16 +5,32 @@ import { ChallengeBodyData } from '../challenge/entities/challenge-body-data.ent
 import { EvaluatePracticeDto } from './dto/evaluate-practice.dto';
 import { PoseEvaluator } from './utils/pose-evaluator.util';
 import { FEEDBACK_MESSAGES } from './constants/feedback.constant';
+import { UserChallenge } from '../user/entities/user_challenge.entity';
+import { User } from '../user/entities/user.entity';
+import { Challenge } from '../challenge/entities/challenge.entity';
 
 @Injectable()
 export class PracticeService {
   constructor(
     @InjectRepository(ChallengeBodyData)
     private readonly challengeBodyDataRepository: Repository<ChallengeBodyData>,
+    @InjectRepository(UserChallenge)
+    private readonly userChallengeRepository: Repository<UserChallenge>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(Challenge)
+    private readonly challengeRepository: Repository<Challenge>,
   ) {}
 
   async evaluatePractice(challengeId: number, dto: EvaluatePracticeDto) {
-    const { user_pose_data } = dto;
+    const { userId, user_pose_data } = dto;
+
+    const user = await this.findUserByExternalId(userId);
+
+    const challenge = await this.challengeRepository.findOne({ where: { id: challengeId } });
+    if (!challenge) {
+      throw new NotFoundException(`해당 챌린지를 찾을 수 없습니다.`);
+    }
 
     const challengeBodyData = await this.challengeBodyDataRepository.findOne({
       where: { challenge: { id: challengeId } },
@@ -34,16 +50,72 @@ export class PracticeService {
     // 2. Map to feedback text
     const feedback = this.generateFeedback(totalScore, scores);
 
-    return {
-      challengeId,
-      scores: {
-        total: totalScore,
-        rhythm: scores.rhythm,
-        accuracy: scores.accuracy,
-        expression: scores.expression,
-      },
-      feedback,
+    // 3. Save result to user_challenge entity
+    const practiceResult = {
+        scores: {
+            total: totalScore,
+            rhythm: scores.rhythm,
+            accuracy: scores.accuracy,
+            expression: scores.expression,
+        },
+        feedback,
     };
+
+    const newUserChallenge = this.userChallengeRepository.create({
+      users: user,
+      challenge: challenge,
+      data: practiceResult as any, // Type casting depending on entity config
+      score: totalScore,
+      comment: feedback.overall,
+    });
+
+    const savedUserChallenge = await this.userChallengeRepository.save(newUserChallenge);
+
+    return {
+      userChallengeId: savedUserChallenge.id,
+      challengeId,
+      ...practiceResult,
+    };
+  }
+
+  async getPracticeResult(userChallengeId: number) {
+    const userChallenge = await this.userChallengeRepository.findOne({
+      where: { id: userChallengeId },
+      relations: ['users', 'challenge'],
+    });
+
+    if (!userChallenge) {
+      throw new NotFoundException(`해당 연습 결과(UserChallenge)를 찾을 수 없습니다.`);
+    }
+
+    return userChallenge;
+  }
+
+  async getUserPracticeResults(userId: string, challengeId?: number) {
+    const user = await this.findUserByExternalId(userId);
+
+    const whereCondition: any = { users: { id: user.id } };
+    if (challengeId) {
+      whereCondition.challenge = { id: challengeId };
+    }
+
+    const results = await this.userChallengeRepository.find({
+      where: whereCondition,
+      relations: ['challenge'],
+      order: { createdAt: 'DESC' },
+    });
+
+    return results;
+  }
+
+  private async findUserByExternalId(userId: string) {
+    const user = await this.userRepository.findOne({ where: { user_id: userId } });
+
+    if (!user) {
+      throw new NotFoundException(`해당 유저를 찾을 수 없습니다.`);
+    }
+
+    return user;
   }
 
   private generateFeedback(totalScore: number, scores: { rhythm: number; accuracy: number; expression: number }) {
