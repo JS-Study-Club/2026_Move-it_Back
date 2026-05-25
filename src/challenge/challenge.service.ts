@@ -1,17 +1,21 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { Challenge } from './entities/challenge.entity';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { NotFoundException } from '@nestjs/common';
 import { CreateMusicDto } from './dto/create-music.dto';
+import { VideoPoseExtractorUtil } from './utils/video-pose-extractor.util';
+import 'multer';
 
 @Injectable()
 export class ChallengeService {
+    private videoPoseExtractor = new VideoPoseExtractorUtil();
+
     constructor(@Inject('ChallengeRepository') private readonly challengeRepository: Repository<Challenge>, private readonly configService: ConfigService) { }
 
     private formatResponse(challenge: Challenge) {
         if (!challenge) return challenge;
-        const { like_count, music, body_data, ...rest } = challenge as any;
+        const { like_count, music, ...rest } = challenge as any;
         return {
             ...rest,
             genre: music?.genre,
@@ -19,7 +23,6 @@ export class ChallengeService {
             length: music?.length,
             music_url: music?.music_url,
             release_date: music?.release_date,
-            pose_data: body_data?.pose_data
         };
     }
 
@@ -33,12 +36,40 @@ export class ChallengeService {
         return this.formatResponse(result);
     }
 
-    async createChallenge(createMusicDto: CreateMusicDto) {
+    async getChallengeBodyData(id: number) {
+        const result = await this.challengeRepository.findOne({ where: { id } });
+
+        if (!result) {
+            throw new NotFoundException('챌린지를 찾을 수 없습니다.');
+        }
+
+        return result;
+    }
+
+    async createChallenge(createMusicDto: CreateMusicDto, video?: Express.Multer.File) {
+        let extractedPoseData: any[] | null = null;
+
+        if (video) {
+            try {
+                // 영상 전체를 분석하도록 수정 (시작과 끝 파라미터를 0과 undefined로 고정)
+                extractedPoseData = await this.videoPoseExtractor.extractPoseFromVideo(
+                    video.buffer,
+                    0,
+                    undefined
+                );
+            } catch (error) {
+                console.error('Failed to extract pose from video:', error);
+                throw new InternalServerErrorException('영상 분석(포즈 추출)에 실패했습니다.');
+            }
+        }
+
         const challenge = this.challengeRepository.create({
             name: createMusicDto.name,
             album_art_url: createMusicDto.album_art_url,
             description: createMusicDto.description,
             difficulty: createMusicDto.difficulty,
+            start_time: createMusicDto.start_time || 0,
+            end_time: createMusicDto.end_time || undefined,
             music: {
                 genre: createMusicDto.genre,
                 artist: createMusicDto.artist,
@@ -47,7 +78,7 @@ export class ChallengeService {
                 release_date: createMusicDto.release_date
             },
             body_data: {
-                pose_data: null
+                pose_data: extractedPoseData
             }
         });
         const saved = await this.challengeRepository.save(challenge);
