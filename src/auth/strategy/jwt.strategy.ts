@@ -1,19 +1,22 @@
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
-// // import { jwtConstants } from './constants';
+import { ConfigService } from '@nestjs/config';
+import { JwtPayloadType } from '@/utils/types/jwt-payload.type';
+// TODO : 토큰 검사, 유저 정보 검증, req.user에 정보 전달
 
-// @Injectable()
-// export class JwtStrategy extends PassportStrategy(Strategy,'jwt') {
-//   constructor() {
-//     super({
-//       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-//       ignoreExpiration: false,
-//       secretOrKey: jwtConstants.secret,
-//     });
-//   }
+@Injectable()
+export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
+  constructor(private configService: ConfigService) {
+    super({
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ignoreExpiration: false,
+      secretOrKey: configService.getOrThrow<string>('auth.jwtTokenSecret'),
+    });
+  }
 
-//   async validate(payload: any) {
-//     return { userId: payload.sub, username: payload.username };
-//   }
-// }
+  public validate(payload: JwtPayloadType): JwtPayloadType {
+    // return { id: payload.sub, userId: payload.userId };
+    return payload;
+  }
+}

@@ -60,7 +60,7 @@ export class AuthController {
   @ApiOkResponse({ type: RefreshResDto })
   @HttpCode(HttpStatus.OK)
   public async refresh(@Request() request: RefreshReqDto): Promise<void> {
-    await this.authService.refreshToken(request.id);
+    await this.authService.refreshToken(request.id, request.refreshToken);
   }
 
   @Post('logout')

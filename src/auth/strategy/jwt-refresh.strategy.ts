@@ -5,24 +5,16 @@ import { ConfigService } from '@nestjs/config';
 import { JwtRefreshPayloadType } from '../../utils/types/jwt-refresh-payload.type';
 
 @Injectable()
-export class JwtRefreshStrategy extends PassportStrategy(
-  Strategy,
-  'jwt-refresh',
-) {
+export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
   constructor(configService: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKey: configService.getOrThrow('auth.refreshSecret', {
-        infer: true,
-      }),
+      ignoreExpiration: false,
+      secretOrKey: configService.getOrThrow('auth.jwtRefreshTokenSecret'),
     });
   }
 
   public validate(payload: JwtRefreshPayloadType): JwtRefreshPayloadType {
-    if (!payload.sessionId) {
-      throw new UnauthorizedException();
-    }
-
     return payload;
   }
 }
