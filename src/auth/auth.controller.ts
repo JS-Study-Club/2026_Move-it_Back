@@ -16,7 +16,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { NullableType } from '@/utils/types/nullable.type';
 import { User } from '@/user/entities/user.entity';
-import { RefreshResponseDto } from './dto/refresh-response.dto';
+import { RefreshResDto } from './dto/refresh.res.dto';
 import { AuthUpdateDto } from './dto/auth-update.dto';
 import { LoginReqDto } from './dto/login.req.dto';
 import { LoginResDto } from './dto/login.res.dto';
@@ -57,7 +57,7 @@ export class AuthController {
   @Post('refresh')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt-refresh'))
-  @ApiOkResponse({ type: RefreshResponseDto })
+  @ApiOkResponse({ type: RefreshResDto })
   @HttpCode(HttpStatus.OK)
   public async refresh(@Request() request: RefreshReqDto): Promise<void> {
     await this.authService.refreshToken(request.id);
