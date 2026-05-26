@@ -1,70 +1,162 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  HttpStatus,
+  Injectable,
+  UnauthorizedException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { UserService } from '@/user/user.service';
-import * as bcrypt from "bcrypt";
-import { JwtService } from 'node_modules/@nestjs/jwt';
-import { ConfigService } from 'node_modules/@nestjs/config';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UserRepository } from '@/user/user.repository';
+import * as bcrypt from 'bcrypt';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { User } from '@/user/entities/user.entity';
+import { LoginReqDto } from './dto/login.req.dto';
+import { LoginResDto } from './dto/login.res.dto';
+import { RegisterReqDto } from './dto/register.req.dto';
+import ms from 'ms';
+import { RefreshResDto } from './dto/refresh.res.dto';
 
 @Injectable()
 export class AuthService {
-    constructor(
-        private userService: UserService,
-        private jwtService: JwtService,
-        private configService: ConfigService,
-    ){};
+  constructor(
+    private userService: UserService,
+    private jwtService: JwtService,
+    private configService: ConfigService,
+  ) {}
 
-    async validateUser(username:string, password:string){ // TODO : 매개변수 형 변환 확인
-        const user = await this.userService.findByName(username);
-        if (user && await bcrypt.compare(password, user.password)) {
-            const { password, ...result } = user;
-            console.log(user);
-            return result;
-        } else {
-            throw new UnauthorizedException({error: "Incorrect username | password"});
-        }
+  async signIn(loginDto: LoginReqDto): Promise<LoginResDto> {
+    const user = await this.userService.findByUserId(loginDto.userId);
+    if (!user) {
+      throw new UnprocessableEntityException({
+        status: HttpStatus.UNPROCESSABLE_ENTITY,
+        erorr: {
+          userId: 'not found',
+        },
+      });
+    }
+    if (!user.password) {
+      throw new UnprocessableEntityException({
+        status: HttpStatus.UNPROCESSABLE_ENTITY,
+        errors: {
+          password: 'empty pw',
+        },
+      });
+    }
+    const isPasswordValid =
+      user && (await bcrypt.compare(loginDto.password, user.password));
+    if (!isPasswordValid) {
+      throw new UnprocessableEntityException({
+        status: HttpStatus.UNPROCESSABLE_ENTITY,
+        errors: {
+          password: 'incorrect pw',
+        },
+      });
     }
 
-    async login(user: any) {
-        const payload = { username: user.username, sub: user.id };
-        
-        const token = this.jwtService.sign(payload, {
-            secret: this.configService.get('JWT_ACCESS_SECRET'),
-            expiresIn: '15m'
-        });
-        const refreshToken = this.jwtService.sign(payload, {
-            secret: this.configService.get('JWT_REFRESH_SECRET'),
-            expiresIn: '7d'
-        });
-        // await this.updateRefreshTokenInDB(user.id, refreshToken); //DB 저장 필수 ;;
+    const { token, refreshToken, tokenExpires } = await this.getTokensData({
+      id: user.id,
+    });
+    return {
+      id: user.id,
+      refreshToken,
+      token,
+      tokenExpires,
+    };
+  }
 
-        return { token, refreshToken, tokenExpires: new Date(Date.now() + 15 * 60 * 1000) };
-        // return { access_token: this.jwtService.sign(payload)}
+  async register(dto: RegisterReqDto): Promise<void> {
+    // const user = await this.userService.create({
+    //   userId: dto.userId,
+    //   userName: dto.userName,
+    //   email: dto.email,
+    //   password: dto.password,
+    //   teacherId: dto.teacherId,
+    // });
+    const existingUser = await this.userService.findByUserId(dto.userId);
+    if (existingUser) {
+      throw new ConflictException('이미 가입된 아이디입니다');
+    }
+    // const user = await this.userService.create({
+    //   ...dto,
+    // });
+    const user = await this.userService.create({
+      ...dto,
+    });
+
+    await this.jwtService.signAsync(
+      { sub: user!.id, username: user!.user_id },
+      {
+        secret: this.configService.getOrThrow('auth.jwtTokenSecret'),
+        expiresIn: this.configService.getOrThrow('auth.jwtTokenExpires'),
+      },
+    );
+  }
+
+  async refreshToken(id: number): Promise<RefreshResDto> {
+    const user = await this.userService.findById(id);
+    if (user === null || !user?.refreshToken)
+      throw new UnauthorizedException('이미 로그아웃된 사용자');
+
+    const { token, refreshToken, tokenExpires } = await this.getTokensData({
+      id: user.id,
+    });
+    const isRefreshTokenMatch = await bcrypt.compare(
+      refreshToken,
+      user.refreshToken,
+    );
+    if (!isRefreshTokenMatch) {
+      throw new UnauthorizedException('잘못된 리프레시 토큰');
     }
 
-    async refresh(user: any){
-        const currentUser = await this.userService.findOne(user.id);
-        if(currentUser===null || !currentUser?.refreshToken) throw new UnauthorizedException("이미 로그아웃된 사용자");
+    const payload = { sub: user.id };
+    const newToken = this.jwtService.sign(payload, {
+      secret: this.configService.getOrThrow('auth.jwtTokenSecret'),
+      expiresIn: this.configService.getOrThrow('auth.jwtTokenExpires'),
+    });
+    const newRefreshToken = this.jwtService.sign(payload, {
+      secret: this.configService.getOrThrow('auth.jwtRefreshTokenSecret'),
+      expiresIn: this.configService.getOrThrow('auth.jwtRefreshTokenExpires'),
+    });
+    await this.userService.updateRefreshToken(user.id, newRefreshToken);
 
-        const payload = { username: user.username, sub: user.id };
-        const newToken = this.jwtService.sign(payload, {
-            secret: this.configService.get('JWT_ACCESS_SECRET'),
-            expiresIn: '15m'
-        });
-        const newRefreshToken = this.jwtService.sign(payload, {
-            secret: this.configService.get('JWT_REFRESH_SECRET'),
-            expiresIn: '7d'
-        });
-        await this.userService.updateRefreshToken(user.id, newRefreshToken);
-        return { token: newToken, refreshToken: newRefreshToken };
-    }
+    return {
+      accessToken: newToken,
+      refreshToken: newRefreshToken,
+      tokenExpires: tokenExpires,
+    };
+  }
 
-    async signup(dto: CreateUserDto): Promise<void> {
-        const user = this.userService.create(dto);
-    }
+  async logout(id: number) {
+    await this.userService.updateRefreshToken(id, null);
+    return { message: '로그아웃 성공' };
+  }
 
-    async logout(user: any){
-        await this.userService.updateRefreshToken(user.id, null);
-        return {message: "로그아웃 성공"}
-    }
+  private async getTokensData(data: { id: User['id'] }) {
+    const tokenExpiresIn = this.configService.getOrThrow(
+      'auth.jwtTokenExpires',
+    );
+    const tokenExpires = Date.now() + ms(tokenExpiresIn);
+
+    const [token, refreshToken] = await Promise.all([
+      await this.jwtService.signAsync(
+        { id: data.id },
+        {
+          secret: this.configService.getOrThrow('auth.jwtTokenSecret'),
+          expiresIn: tokenExpiresIn,
+        },
+      ),
+      await this.jwtService.signAsync(
+        { id: data.id },
+        {
+          secret: this.configService.getOrThrow('auth.jwtRefreshTokenSecret'),
+          expiresIn: this.configService.getOrThrow('auth.jwtRefreshExpires'),
+        },
+      ),
+    ]);
+    return {
+      token,
+      refreshToken,
+      tokenExpires,
+    };
+  }
 }

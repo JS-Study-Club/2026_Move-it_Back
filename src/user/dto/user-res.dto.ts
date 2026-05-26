@@ -1,15 +1,15 @@
 import { Exclude, Expose } from 'class-transformer';
 
-export class UserResponseDto {
-  @Expose() 
+export class UserResDto {
+  @Expose()
   id: number;
 
   @Expose()
   username: string;
 
-  @Exclude() 
+  @Exclude()
   password: string;
 
-//   @Exclude()
-//   salt: string;
+  //   @Exclude()
+  //   salt: string;
 }

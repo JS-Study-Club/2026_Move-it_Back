@@ -1,61 +1,73 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Body, 
-  Patch, 
-  Param, 
-  Delete, 
-  UnauthorizedException, 
-  Res, Req,
+import {
+  Controller,
+  Post,
+  Body,
+  UnauthorizedException,
   UseGuards,
-  Response, Request,
   HttpCode,
-  HttpStatus
+  HttpStatus,
+  Get,
+  Request,
+  Patch,
+  Delete,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LoginDto } from "./dto/login-user.dto";
 import { AuthGuard } from '@nestjs/passport';
-import { CreateUserDto } from './dto/create-user.dto';
-// import { AuthGuard } from 
+import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { NullableType } from '@/utils/types/nullable.type';
+import { User } from '@/user/entities/user.entity';
+import { RefreshResponseDto } from './dto/refresh-response.dto';
+import { AuthUpdateDto } from './dto/auth-update.dto';
+import { LoginReqDto } from './dto/login.req.dto';
+import { LoginResDto } from './dto/login.res.dto';
+import { RegisterReqDto } from './dto/register.req.dto';
+import { RefreshReqDto } from './dto/refresh.req.dto';
+// import { AuthGuard } from
 
-// TODO : @nestjs/swagger ApiTag처리
-
-@Controller('api/v1/auth')
-export class AuthController{
+@ApiTags('Auth')
+@Controller({ path: '/auth', version: '1' })
+export class AuthController {
   constructor(private readonly authService: AuthService) {}
-  
+
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Body() loginDto: LoginDto): Promise<{token:string, refreshToken:string, tokenExpires:Date}> {
-    const user = await this.authService.validateUser( // todo; pipe
-      loginDto.username,
-      loginDto.password,
-    );
-
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-    return this.authService.login(user);
+  @ApiOkResponse({ type: LoginResDto })
+  async login(@Body() loginDto: LoginReqDto): Promise<LoginResDto> {
+    return this.authService.signIn(loginDto);
   }
 
   @Post('signup')
-  @HttpCode(HttpStatus.CREATED)
-  async signup(@Body() signupDTO: CreateUserDto) {
-    return await this.authService.signup(signupDTO);
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async signup(@Body() createUserDto: RegisterReqDto) {
+    return await this.authService.register(createUserDto);
+  }
+
+  // @Post('forgot/password')
+  // @HttpCode(HttpStatus.NO_CONTENT)
+  // async forgotPassword(@Body() forgotPwDto: AuthForgotPwDto): Promise<void> {
+  //   return this.authService.forgotPassword(forgotPwDto.email);
+  // }
+
+  // @Post('reset/password')
+  // @HttpCode(HttpStatus.NO_CONTENT)
+  // resetPassword(@Body() resetPwDto: AuthResetPwDto): Promise<void> {
+  //   return this.authService.resetPassword(resetPwDto.hash, resetPwDto.password);
+  // }
+
+  @Post('refresh')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt-refresh'))
+  @ApiOkResponse({ type: RefreshResponseDto })
+  @HttpCode(HttpStatus.OK)
+  public async refresh(@Request() request: RefreshReqDto): Promise<void> {
+    await this.authService.refreshToken(request.id);
   }
 
   @Post('logout')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
   @HttpCode(HttpStatus.NO_CONTENT)
-  async logout(@Req() req: any){
-    // TODO: 로그아웃 관련 로직
-    return this.authService.logout(req);
+  public async logout(@Request() request: any): Promise<void> {
+    await this.authService.logout(request.user.id);
   }
-
-  @UseGuards(AuthGuard('jwt-refresh'))
-  @Post('refresh')
-  async refresh(@Req() req: any){
-    return this.authService.refresh(req.user);
-  }
-
 }
