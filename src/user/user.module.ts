@@ -10,5 +10,6 @@ import { Module } from '@nestjs/common';
   imports: [TypeOrmModule.forFeature([User, TeacherCharacter, Level])],
   controllers: [UserController],
   providers: [UserService],
+  exports: [UserService],
 })
 export class UserModule {}
