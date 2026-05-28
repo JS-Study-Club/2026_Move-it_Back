@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import {
   Controller,
   Get,
@@ -23,6 +24,10 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 import { NullableType } from '@/utils/types/nullable.type';
 import { UserResDto } from './dto/user-res.dto';
+=======
+import { Controller } from '@nestjs/common';
+import { UserService } from './user.service';
+>>>>>>> upstream/dev
 
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'))
@@ -30,6 +35,7 @@ import { UserResDto } from './dto/user-res.dto';
 @Controller({ path: '/users', version: '1' })
 export class UserController {
   constructor(private readonly userService: UserService) {}
+<<<<<<< HEAD
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -94,4 +100,6 @@ export class UserController {
   public async delete(@Request() request): Promise<void> {
     return await this.userService.softDelete(request.user.id);
   }
+=======
+>>>>>>> upstream/dev
 }

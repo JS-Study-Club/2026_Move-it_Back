@@ -25,6 +25,12 @@ export class Challenge {
   @Column()
   difficulty!: string;
 
+  @Column({ type: 'int', default: 0 })
+  start_time!: number;
+
+  @Column({ type: 'int', nullable: true })
+  end_time?: number;
+
   @CreateDateColumn()
   createdAt!: Date;
 

@@ -78,10 +78,11 @@ export class AuthService {
     if (existingUser) {
       if (existingUser.username === dto.username) {
         throw new ConflictException({
-          message: '이미 가입된 아이디입니다'});
+          message: '이미 가입된 아이디입니다',
+        });
       }
       if (existingUser.email === dto.email) {
-        throw new ConflictException({message: '이미 사용 중인 이메일입니다'});
+        throw new ConflictException({ message: '이미 사용 중인 이메일입니다' });
       }
     }
     await this.userService.create({
@@ -100,14 +101,16 @@ export class AuthService {
   ): Promise<RefreshResDto> {
     const user = await this.userService.findById(id);
     if (user === null) {
-      throw new UnauthorizedException({message:'로그아웃 혹은 존재하지 않는 사용자'});
+      throw new UnauthorizedException({
+        message: '로그아웃 혹은 존재하지 않는 사용자',
+      });
     }
     const isRefreshTokenMatch = await bcrypt.compare(
       currentRefreshToken,
       (await this.userService.findRefreshTokenById(id)).refreshToken,
     );
     if (!isRefreshTokenMatch) {
-      throw new UnauthorizedException({message: '다시 로그인 해주세요'}); // 잘못된 리프레시 토큰
+      throw new UnauthorizedException({ message: '다시 로그인 해주세요' }); // 잘못된 리프레시 토큰
     }
 
     const { accessPayload, refreshPayload } = this.getPayloadsData(id);

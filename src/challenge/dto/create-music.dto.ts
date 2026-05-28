@@ -1,5 +1,6 @@
-import { IsDateString, IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { IsDateString, IsNotEmpty, IsNumber, IsString, IsOptional } from 'class-validator';
 import { ApiProperty } from "@nestjs/swagger";
+import { Type } from 'class-transformer';
 
 export class CreateMusicDto {
     @IsString()
@@ -18,6 +19,7 @@ export class CreateMusicDto {
     artist!: string
 
     @IsNumber()
+    @Type(() => Number)
     @IsNotEmpty()
     @ApiProperty({ description: '음악 길이 (초)' })
     length!: number
@@ -45,4 +47,18 @@ export class CreateMusicDto {
     @IsNotEmpty()
     @ApiProperty({ description: '챌린지 난이도' })
     difficulty!: string
+
+    @IsNumber()
+    @Type(() => Number)
+    @ApiProperty({ description: '하이라이트 구간 시작 시간(초)', required: false, default: 0 })
+    start_time?: number
+
+    @IsNumber()
+    @Type(() => Number)
+    @ApiProperty({ description: '하이라이트 구간 종료 시간(초)', required: false })
+    end_time?: number
+
+    @IsOptional()
+    @ApiProperty({ type: 'string', format: 'binary', required: false, description: '업로드할 챌린지 영상 파일' })
+    video?: any;
 }
