@@ -13,6 +13,8 @@ import { User } from './entities/user.entity';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResDto } from './dto/user-res.dto';
 import { plainToInstance } from 'class-transformer';
+import { RefreshResDto } from '@/auth/dto/refresh.res.dto';
+import { UserWithPwDto } from './dto/user-with-pw.dto';
 
 @Injectable()
 export class UserService {
@@ -21,7 +23,7 @@ export class UserService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  async create(dto: CreateUserDto): Promise<User> {
+  async create(dto: CreateUserDto): Promise<UserResDto> {
     let hashedPassword: string | undefined = undefined;
     if (dto.password) {
       const salt = await bcrypt.genSalt();
@@ -39,30 +41,46 @@ export class UserService {
           },
         });
       }
-      email = dto.email;
     }
+    email = dto.email;
     const newUser = this.userRepository.create({
-      ...dto,
+      username: dto.username,
+      email: email,
+      user_id: dto.userId,
       password: hashedPassword,
+      teacher_character_id: dto.teacherId,
     });
-    return await this.userRepository.save(newUser);
+    return plainToInstance(UserResDto, await this.userRepository.save(newUser));
   }
 
-  save(user: User) {
-    return this.userRepository.save(user);
+  async save(user: User): Promise<UserResDto> {
+    return plainToInstance(UserResDto, await this.userRepository.save(user));
   }
 
-  findById(id: User['id']): Promise<User | null> {
-    return this.userRepository.findOneBy({ id });
+  async findById(id: User['id']): Promise<UserWithPwDto | null> {
+    return plainToInstance(
+      UserWithPwDto,
+      await this.userRepository.findOneBy({ id }),
+    );
   }
 
-  findByUserId(userId: User['user_id']): Promise<User | null> {
-    return this.userRepository.findOneBy({ user_id: userId });
+  async findByUserId(userId: User['user_id']): Promise<UserWithPwDto | null> {
+    return plainToInstance(
+      UserWithPwDto,
+      await this.userRepository.findOneBy({ user_id: userId }),
+    );
   }
 
-  findByEmail(email: User['email']): Promise<User | null> {
-    return this.userRepository.findOneBy({ email: email });
+  async findRefreshTokenById(id: User['id']): Promise<RefreshResDto> {
+    return plainToInstance(
+      RefreshResDto,
+      (await this.userRepository.findOneBy({ id }))?.refreshToken,
+    );
   }
+
+  // findByEmail(email: User['email']): Promise<User | null> {
+  //   return this.userRepository.findOneBy({ email: email });
+  // }
 
   async update(id: User['id'], dto: UpdateUserDto): Promise<UserResDto | null> {
     const user = await this.userRepository.findOneBy({ id });

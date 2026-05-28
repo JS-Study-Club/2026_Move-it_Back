@@ -10,18 +10,17 @@ import {
   Request,
   Patch,
   Delete,
+  Res,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { NullableType } from '@/utils/types/nullable.type';
-import { User } from '@/user/entities/user.entity';
 import { RefreshResDto } from './dto/refresh.res.dto';
-import { AuthUpdateDto } from './dto/auth-update.dto';
 import { LoginReqDto } from './dto/login.req.dto';
 import { LoginResDto } from './dto/login.res.dto';
 import { RegisterReqDto } from './dto/register.req.dto';
 import { RefreshReqDto } from './dto/refresh.req.dto';
+import express from 'express';
 // import { AuthGuard } from
 
 @ApiTags('Auth')
@@ -32,8 +31,19 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: LoginResDto })
-  async login(@Body() loginDto: LoginReqDto): Promise<LoginResDto> {
-    return this.authService.signIn(loginDto);
+  async login(
+    @Body() loginDto: LoginReqDto,
+    @Res({ passthrough: true }) res: express.Response,
+  ): Promise<LoginResDto> {
+    const { user, accessToken, refreshToken, tokenExpires } =
+      await this.authService.login(loginDto);
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env?.NODE_ENV === 'prod' || false,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // ms, 7d
+    });
+    return { user, accessToken, tokenExpires };
   }
 
   @Post('signup')

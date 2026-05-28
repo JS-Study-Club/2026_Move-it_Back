@@ -1,24 +1,28 @@
 import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { ClassSerializerInterceptor, ValidationPipe } from 'node_modules/@nestjs/common';
+import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
+import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // 유효성 검사
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    transform: true
-  }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
+  app.use(cookieParser());
 
   // 1. Swagger 문서 설정 (DocumentBuilder)
   const config = new DocumentBuilder()
-    .setTitle('MoveIt API')           
-    .setDescription('API 상세 설명') 
-    .setVersion('1.0')                     
-    .addBearerAuth()                        
+    .setTitle('MoveIt API')
+    .setDescription('API 상세 설명')
+    .setVersion('1.0')
+    .addBearerAuth()
     .build();
 
   // 2. Swagger 문서 생성

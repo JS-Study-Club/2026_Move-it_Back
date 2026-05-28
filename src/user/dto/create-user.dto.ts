@@ -10,17 +10,17 @@ import { lowerCaseTransformer } from '../../utils/transformers/lower-case.transf
 import { Optional } from '@nestjs/common';
 
 export class CreateUserDto {
-  @ApiProperty({ example: 'John', type: String })
+  @ApiProperty({ example: '민바오', type: String })
   @IsNotEmpty()
-  userName: string;
+  username: string;
 
-  @ApiProperty({ example: 'test1@example.com', type: String })
+  @ApiProperty({ example: '1111@e-mirim.hs.kr', type: String })
   @Transform(lowerCaseTransformer)
   @IsNotEmpty()
   @IsEmail()
   email: string;
 
-  @ApiProperty({ example: 'younan1', type: String })
+  @ApiProperty({ example: 'minba0', type: String })
   @IsNotEmpty()
   userId: string;
 
@@ -29,7 +29,7 @@ export class CreateUserDto {
   password: string;
 
   @IsNotEmpty() //TODO :  Id validation
-  teacherId: string;
+  teacherId: number;
 
   @Optional()
   refreshToken?: string;

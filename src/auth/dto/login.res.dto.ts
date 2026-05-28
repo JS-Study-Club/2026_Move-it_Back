@@ -1,17 +1,15 @@
 import { Exclude, Expose } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+import { UserResDto } from '@/user/dto/user-res.dto';
 
 export class LoginResDto {
+  @ApiProperty()
   @Expose()
-  id!: number;
+  user!: UserResDto;
 
   @ApiProperty()
   @Expose()
-  token!: string;
-
-  @ApiProperty()
-  @Expose()
-  refreshToken!: string;
+  accessToken!: string;
 
   @ApiProperty()
   @Expose()

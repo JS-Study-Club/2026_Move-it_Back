@@ -18,6 +18,7 @@ import { RefreshResDto } from './dto/refresh.res.dto';
 import crypto, { UUID } from 'crypto';
 import { JwtPayloadType } from '@/utils/types/jwt-payload.type';
 import { JwtRefreshPayloadType } from '@/utils/types/jwt-refresh-payload.type';
+import { UserResDto } from '@/user/dto/user-res.dto';
 
 @Injectable()
 export class AuthService {
@@ -27,17 +28,17 @@ export class AuthService {
     private configService: ConfigService,
   ) {}
 
-  async signIn(loginDto: LoginReqDto): Promise<LoginResDto> {
+  async login(loginDto: LoginReqDto): Promise<LoginResult> {
     const user = await this.userService.findByUserId(loginDto.userId);
     if (!user) {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        erorr: {
+        errors: {
           userId: 'not found',
         },
       });
     }
-    if (!user.password) {
+    if (!user.password || user.password === undefined) {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
         errors: {
@@ -45,8 +46,10 @@ export class AuthService {
         },
       });
     }
-    const isPasswordValid =
-      user && (await bcrypt.compare(loginDto.password, user.password));
+    const isPasswordValid = await bcrypt.compare(
+      loginDto.password.trim(),
+      user.password,
+    );
     if (!isPasswordValid) {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
@@ -60,74 +63,69 @@ export class AuthService {
       accessPayload,
       refreshPayload,
     );
+
     return {
-      id: user.id,
-      refreshToken,
-      token,
-      tokenExpires,
+      user: user,
+      accessToken: token,
+      refreshToken: refreshToken,
+      tokenExpires: tokenExpires,
     };
   }
 
   async register(dto: RegisterReqDto): Promise<void> {
-    // const user = await this.userService.create({
-    //   userId: dto.userId,
-    //   userName: dto.userName,
-    //   email: dto.email,
-    //   password: dto.password,
-    //   teacherId: dto.teacherId,
-    // });
     const existingUser = await this.userService.findByUserId(dto.userId);
+    // TODO : 중복 이메일, 중복 이름 - UNIQUE 확인
     if (existingUser) {
-      throw new ConflictException('이미 가입된 아이디입니다');
+      if (existingUser.username === dto.username) {
+        throw new ConflictException({
+          message: '이미 가입된 아이디입니다'});
+      }
+      if (existingUser.email === dto.email) {
+        throw new ConflictException({message: '이미 사용 중인 이메일입니다'});
+      }
     }
-    const user = await this.userService.create({
-      ...dto,
+    await this.userService.create({
+      username: dto.username,
+      email: dto.email,
+      userId: dto.userId,
+      password: dto.password,
+      teacherId: dto.teacherId,
     });
-
-    await this.jwtService.signAsync(
-      { sub: user!.id, username: user!.user_id },
-      {
-        secret: this.configService.getOrThrow('auth.jwtTokenSecret'),
-        expiresIn: this.configService.getOrThrow('auth.jwtTokenExpires'),
-      },
-    );
   }
 
   async refreshToken(
-    id: number,
+    // TODO : 무겁다면 레디스로 리팩토링
+    id: User['id'],
     currentRefreshToken: string,
   ): Promise<RefreshResDto> {
     const user = await this.userService.findById(id);
-    if (user === null || !user.refreshToken) {
-      throw new UnauthorizedException('로그아웃 혹은 존재하지 않는 사용자');
+    if (user === null) {
+      throw new UnauthorizedException({message:'로그아웃 혹은 존재하지 않는 사용자'});
     }
     const isRefreshTokenMatch = await bcrypt.compare(
       currentRefreshToken,
-      user.refreshToken,
+      (await this.userService.findRefreshTokenById(id)).refreshToken,
     );
     if (!isRefreshTokenMatch) {
-      throw new UnauthorizedException('다시 로그인 해주세요'); // 잘못된 리프레시 토큰
+      throw new UnauthorizedException({message: '다시 로그인 해주세요'}); // 잘못된 리프레시 토큰
     }
 
-    const { accessPayload, refreshPayload } = this.getPayloadsData(user.id);
-    const {
-      token: newToken,
-      refreshToken: newRefreshToken,
-      tokenExpires,
-    } = await this.getTokensData(accessPayload, refreshPayload);
+    const { accessPayload, refreshPayload } = this.getPayloadsData(id);
+    const { refreshToken: newRefreshToken } = await this.getTokensData(
+      accessPayload,
+      refreshPayload,
+    );
 
     const salt = await bcrypt.genSalt();
     const hashedRefreshToken = await bcrypt.hash(newRefreshToken, salt);
     await this.userService.updateRefreshToken(user.id, hashedRefreshToken);
 
     return {
-      accessToken: newToken,
       refreshToken: hashedRefreshToken,
-      tokenExpires: tokenExpires,
     };
   }
 
-  async logout(id: number) {
+  async logout(id: User['id']) {
     await this.userService.updateRefreshToken(id, null);
     return { message: '로그아웃 성공' };
   }
@@ -136,9 +134,9 @@ export class AuthService {
     accessPayload: JwtPayloadType,
     refreshPayload: JwtRefreshPayloadType,
   ) {
-    const tokenExpiresIn = this.configService.getOrThrow<string>(
+    const tokenExpiresIn = (await this.configService.getOrThrow<string>(
       'auth.jwtTokenExpires',
-    ) as any;
+    )) as any;
     const tokenExpires = Date.now() + ms(tokenExpiresIn);
 
     const [token, refreshToken] = await Promise.all([
@@ -151,7 +149,7 @@ export class AuthService {
           'auth.jwtRefreshTokenSecret',
         ),
         expiresIn: this.configService.getOrThrow<string>(
-          'auth.jwtRefreshExpires',
+          'auth.jwtRefreshTokenExpires',
         ) as any,
       }),
     ]);
@@ -175,4 +173,11 @@ export class AuthService {
       refreshPayload,
     };
   }
+}
+
+interface LoginResult {
+  user: UserResDto;
+  accessToken: string;
+  refreshToken: string;
+  tokenExpires: string;
 }

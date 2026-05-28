@@ -1,6 +1,6 @@
 import { Exclude, Expose } from 'class-transformer';
 
-export class UserResDto {
+export class UserWithPwDto {
   @Expose()
   id: number;
 
@@ -10,6 +10,9 @@ export class UserResDto {
   @Expose()
   username: string;
 
-  @Exclude()
+  @Expose()
   email: string;
+
+  @Expose()
+  password: string;
 }

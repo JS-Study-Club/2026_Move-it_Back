@@ -18,14 +18,14 @@ export class User {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column('varchar', { length: 32 })
+  @Column('varchar', { unique: true, length: 255 })
   user_id!: string;
+
+  @Column('varchar', { nullable: true, length: 32 })
+  username!: string;
 
   @Column('varchar', { unique: true, length: 255 })
   email!: string;
-
-  @Column('varchar', { nullable: true, length: 32 })
-  name!: string;
 
   @Column('varchar', { length: 255 })
   password!: string;
@@ -36,7 +36,7 @@ export class User {
   @Column({ type: 'int', default: 1 })
   level!: number;
 
-  @Column({ type: 'int' })
+  @Column({ type: 'int', default: 1 })
   level_id!: number;
 
   @Column({ type: 'int', default: 0 })
@@ -45,17 +45,17 @@ export class User {
   @CreateDateColumn()
   createdAt!: Date;
 
-  @Column('varchar', { length: 255 })
+  @Column('varchar', { length: 255, nullable: true })
   refreshToken: string;
 
   @OneToMany(() => UserChallenge, (userChallenge) => userChallenge.users)
   challenges!: UserChallenge[];
 
-  @OneToOne(() => TeacherCharacter, (teacher) => teacher.users)
+  @ManyToOne(() => TeacherCharacter, (teacher) => teacher.users)
   @JoinColumn({ name: 'teacher_character_id' })
   teacherCharacter!: TeacherCharacter;
 
-  @OneToOne(() => Level, (levelInfo) => levelInfo.users)
+  @ManyToOne(() => Level, (levelInfo) => levelInfo.users)
   @JoinColumn({ name: 'level_id' })
   levelInfo!: Level;
 }
