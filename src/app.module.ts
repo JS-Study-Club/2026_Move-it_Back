@@ -13,7 +13,6 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import configuration from './config/configuration';
 import { JwtStrategy } from './auth/strategy/jwt.strategy';
 import { JwtRefreshStrategy } from './auth/strategy/jwt-refresh.strategy';
-import { PagesModule } from './pages/pages.module';
 
 @Module({
   imports: [
@@ -40,7 +39,6 @@ import { PagesModule } from './pages/pages.module';
     UserModule,
     ChallengeModule,
     PracticeModule,
-    PagesModule,
   ],
   controllers: [AppController],
   providers: [
