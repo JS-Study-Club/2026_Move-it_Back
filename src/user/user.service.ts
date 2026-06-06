@@ -14,7 +14,6 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResDto } from './dto/user-res.dto';
 import { plainToInstance } from 'class-transformer';
 import { RefreshResDto } from '@/auth/dto/refresh.res.dto';
-import { UserWithPwDto } from './dto/user-with-pw.dto';
 
 @Injectable()
 export class UserService {
@@ -57,18 +56,19 @@ export class UserService {
     return plainToInstance(UserResDto, await this.userRepository.save(user));
   }
 
-  async findById(id: User['id']): Promise<UserWithPwDto | null> {
-    return plainToInstance(
-      UserWithPwDto,
-      await this.userRepository.findOneBy({ id }),
-    );
+  async findById(id: User['id']): Promise<UserResDto | null> {
+    const user = await this.userRepository.findOneBy({ id });
+    if (!user) {
+      return null;
+    }
+    return plainToInstance(UserResDto, user);
   }
 
-  async findByUserId(userId: User['user_id']): Promise<UserWithPwDto | null> {
-    return plainToInstance(
-      UserWithPwDto,
-      await this.userRepository.findOneBy({ user_id: userId }),
-    );
+  async findByUserId(userId: User['user_id']): Promise<UserResDto | null> {
+    const user = await this.userRepository.findOneBy({ user_id: userId });
+    if (!user) return null;
+    ``;
+    return plainToInstance(UserResDto, user);
   }
 
   async findRefreshTokenById(id: User['id']): Promise<RefreshResDto> {
@@ -121,6 +121,10 @@ export class UserService {
     });
     await this.userRepository.save(updatedUser);
     return plainToInstance(UserResDto, { ...updatedUser });
+  }
+
+  async updateLevel(id: User['id'], xp: number): Promise<void> {
+    await this.userRepository.increment({ id }, 'level_xp', xp);
   }
 
   async updateRefreshToken(
