@@ -52,10 +52,6 @@ export class UserService {
     return plainToInstance(UserResDto, await this.userRepository.save(newUser));
   }
 
-  async save(user: User): Promise<UserResDto> {
-    return plainToInstance(UserResDto, await this.userRepository.save(user));
-  }
-
   async findById(id: User['id']): Promise<UserResDto | null> {
     const user = await this.userRepository.findOneBy({ id });
     if (!user) {

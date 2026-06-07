@@ -11,12 +11,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { UserService } from './user.service';
-import {
-  ApiBearerAuth,
-  ApiOkResponse,
-  ApiParam,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { CreateUserDto } from '@/user/dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
