@@ -8,12 +8,14 @@ import { json, urlencoded } from 'express';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.setGlobalPrefix('api');
+
   // 유효성 검사
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,
+      // whitelist: true,
       forbidNonWhitelisted: true,
-      transform: true,
+      // transform: true,
     }),
   );
   app.use(cookieParser());
@@ -32,7 +34,7 @@ async function bootstrap() {
 
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,
+      // whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
     }),
@@ -44,6 +46,7 @@ async function bootstrap() {
     .setDescription('API 상세 설명')
     .setVersion('1.0')
     .addBearerAuth()
+    .addServer('http://localhost:3000') //TODO : 배포시 수정
     .build();
 
   // 2. Swagger 문서 생성

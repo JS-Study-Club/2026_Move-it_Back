@@ -13,16 +13,20 @@ import { User } from './entities/user.entity';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResDto } from './dto/user-res.dto';
 import { plainToInstance } from 'class-transformer';
-import { RefreshResDto } from '@/auth/dto/refresh.res.dto';
+import { UserChallenge } from './entities/user_challenge.entity';
+import { highScoreDanceInfoDto } from '@/pages/dto/page-home.res.dto';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+
+    @InjectRepository(UserChallenge)
+    private readonly userChallengeRepository: Repository<UserChallenge>,
   ) {}
 
-  async create(dto: CreateUserDto): Promise<UserResDto> {
+  async create(dto: CreateUserDto): Promise<User> {
     let hashedPassword: string | undefined = undefined;
     if (dto.password) {
       const salt = await bcrypt.genSalt();
@@ -49,7 +53,7 @@ export class UserService {
       password: hashedPassword,
       teacher_character_id: dto.teacherId,
     });
-    return plainToInstance(UserResDto, await this.userRepository.save(newUser));
+    return await this.userRepository.save(newUser);
   }
 
   async findById(id: User['id']): Promise<UserResDto | null> {
@@ -60,25 +64,22 @@ export class UserService {
     return plainToInstance(UserResDto, user);
   }
 
-  async findByUserId(userId: User['user_id']): Promise<UserResDto | null> {
+  async findByUserId(userId: User['user_id']): Promise<User | null> {
     const user = await this.userRepository.findOneBy({ user_id: userId });
     if (!user) return null;
-    ``;
-    return plainToInstance(UserResDto, user);
+
+    return user;
   }
 
-  async findRefreshTokenById(id: User['id']): Promise<RefreshResDto> {
-    return plainToInstance(
-      RefreshResDto,
-      (await this.userRepository.findOneBy({ id }))?.refreshToken,
-    );
+  async findRefreshTokenById(id: User['id']): Promise<string | undefined> {
+    return (await this.userRepository.findOneBy({ id }))?.refreshToken;
   }
 
   // findByEmail(email: User['email']): Promise<User | null> {
   //   return this.userRepository.findOneBy({ email: email });
   // }
 
-  async update(id: User['id'], dto: UpdateUserDto): Promise<UserResDto | null> {
+  async update(id: User['id'], dto: UpdateUserDto): Promise<User | null> {
     const user = await this.userRepository.findOneBy({ id });
     if (!user) {
       throw new NotFoundException('유저를 찾을 수 없습니다.');
@@ -116,7 +117,7 @@ export class UserService {
       password: password,
     });
     await this.userRepository.save(updatedUser);
-    return plainToInstance(UserResDto, { ...updatedUser });
+    return updatedUser;
   }
 
   async updateLevel(id: User['id'], xp: number): Promise<void> {
@@ -141,8 +142,49 @@ export class UserService {
     await this.userRepository.softDelete(id);
   }
 
-  async me(id: User['id']): Promise<UserResDto> {
+  async me(id: User['id']): Promise<User> {
     const user = await this.userRepository.findOneByOrFail({ id });
-    return plainToInstance(UserResDto, { ...user });
+    return user;
+  }
+
+  async getUserPractice(
+    id: User['id'],
+    limit = 3,
+  ): Promise<highScoreDanceInfoDto[]> {
+    const userPractice = await this.userChallengeRepository.find({
+      where: {
+        userId: String(id),
+      },
+      order: { score: 'ASC' },
+
+      take: limit,
+    });
+    return plainToInstance(highScoreDanceInfoDto, userPractice);
+  }
+
+  async findPracticeChallengeById(id: User['id']): Promise<number | undefined> {
+    const result = await this.userChallengeRepository
+      .createQueryBuilder('uc')
+      .select('uc.id', 'id')
+      .where('uc.userId = :id', { id })
+      .orderBy('uc.createdAt', 'DESC')
+      .limit(1)
+      .getRawOne<{ id: number }>();
+
+    return result?.id;
+  }
+
+  async getRecentPractice(userId: User['id'], limit = 10): Promise<any> {
+    const recentPractices = await this.userChallengeRepository.find({
+      where: {
+        userId: String(userId),
+      },
+      order: {
+        createdAt: 'DESC',
+      },
+      take: limit,
+    });
+
+    return plainToInstance(highScoreDanceInfoDto, recentPractices);
   }
 }

@@ -4,8 +4,11 @@ export class UserResDto {
   @Exclude()
   id: number;
 
-  @Expose()
+  @Expose({ name: 'user_id' })
   userId: string;
+
+  @Expose({ name: 'teacher_character_id' })
+  teacherId: string;
 
   @Expose()
   username: string;
@@ -19,9 +22,9 @@ export class UserResDto {
   @Expose()
   level: number;
 
-  @Expose()
+  @Expose({ name: 'level_xp' })
   levelXp: number;
 
-  @Expose()
+  @Expose({ name: 'level_title' })
   levelTitle: string;
 }

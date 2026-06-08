@@ -7,8 +7,11 @@ import { ChallengeMusic } from '@/challenge/entities/challenge-music.entity';
 import { ChallengeBodyData } from '@/challenge/entities/challenge-body-data.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Challenge, ChallengeMusic, ChallengeBodyData])],
+  imports: [
+    TypeOrmModule.forFeature([Challenge, ChallengeMusic, ChallengeBodyData]),
+  ],
   controllers: [ChallengeController],
   providers: [ChallengeService],
+  exports: [ChallengeService],
 })
 export class ChallengeModule {}

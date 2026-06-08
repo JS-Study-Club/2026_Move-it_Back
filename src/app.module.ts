@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
@@ -13,6 +13,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import configuration from './config/configuration';
 import { JwtStrategy } from './auth/strategy/jwt.strategy';
 import { JwtRefreshStrategy } from './auth/strategy/jwt-refresh.strategy';
+import { PagesModule } from './pages/pages.module';
 
 @Module({
   imports: [
@@ -32,13 +33,15 @@ import { JwtRefreshStrategy } from './auth/strategy/jwt-refresh.strategy';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true, // 개발 환경에서는 true, 배포 환경에서는 false로 설정하는 것이 좋습니다.
+        synchronize: true,
+        autoLoadEntities: true,
       }),
     }),
     AuthModule,
     UserModule,
     ChallengeModule,
     PracticeModule,
+    PagesModule,
   ],
   controllers: [AppController],
   providers: [

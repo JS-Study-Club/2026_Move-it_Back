@@ -9,8 +9,17 @@ import { User } from '../user/entities/user.entity';
 import { Challenge } from '../challenge/entities/challenge.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Practice, ChallengeBodyData, UserChallenge, User, Challenge])],
+  imports: [
+    TypeOrmModule.forFeature([
+      Practice,
+      ChallengeBodyData,
+      UserChallenge,
+      User,
+      Challenge,
+    ]),
+  ],
   controllers: [PracticeController],
   providers: [PracticeService],
+  exports: [PracticeService],
 })
 export class PracticeModule {}

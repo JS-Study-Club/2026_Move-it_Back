@@ -15,8 +15,9 @@ import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { CreateUserDto } from '@/user/dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { NullableType } from '@/utils/types/nullable.type';
+import { NullableType } from '@/auth/utils/types/nullable.type';
 import { UserResDto } from './dto/user-res.dto';
+import { plainToInstance } from 'class-transformer';
 
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'))
@@ -27,8 +28,11 @@ export class UserController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createUserDto: CreateUserDto): Promise<UserResDto> {
-    return this.userService.create(createUserDto);
+  async create(@Body() createUserDto: CreateUserDto): Promise<UserResDto> {
+    return plainToInstance(
+      UserResDto,
+      await this.userService.create(createUserDto),
+    );
   }
 
   // @Get(':id') // 유저의 아이디로 다른 사람들을 조회 // 현재 필요 없을거같아서 없앰
@@ -65,8 +69,11 @@ export class UserController {
   @UseGuards(AuthGuard('jwt'))
   @ApiOkResponse({ type: UserResDto })
   @HttpCode(HttpStatus.OK)
-  public me(@Request() request): Promise<NullableType<UserResDto>> {
-    return this.userService.me(request.user.id);
+  public async me(@Request() request): Promise<NullableType<UserResDto>> {
+    return plainToInstance(
+      UserResDto,
+      await this.userService.me(request.user.id),
+    );
   }
 
   @Patch('me')
@@ -74,11 +81,14 @@ export class UserController {
   @UseGuards(AuthGuard('jwt'))
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: UserResDto })
-  public update(
+  public async update(
     @Request() request,
     @Body() userDto: UpdateUserDto,
   ): Promise<NullableType<UserResDto>> {
-    return this.userService.update(request.user, userDto);
+    return plainToInstance(
+      UserResDto,
+      await this.userService.update(request.user, userDto),
+    );
   }
 
   @Delete('me')
