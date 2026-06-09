@@ -35,35 +35,6 @@ export class UserController {
     );
   }
 
-  // @Get(':id') // 유저의 아이디로 다른 사람들을 조회 // 현재 필요 없을거같아서 없앰
-  // @HttpCode(HttpStatus.OK)
-  // @ApiParam({ name: 'id', type: String, required: true })
-  // findOne(@Param('id') id: User['id']): Promise<NullableType<User>> {
-  //   return this.userService.findById(id);
-  // }
-
-  // @Patch(':id')
-  // @HttpCode(HttpStatus.OK)
-  // @ApiParam({ name: 'id', type: String, required: true })
-  // update(
-  //   @Param('id') id: User['id'],
-  //   @Body() updateUserDto: UpdateUserDto,
-  // ): Promise<User | null> {
-  //   return this.userService.update(id, updateUserDto);
-  // }
-
-  // @Delete(':id')
-  // @ApiParam({
-  //   name: 'id',
-  //   type: String,
-  //   required: true,
-  // })
-  // @HttpCode(HttpStatus.NO_CONTENT)
-  // remove(@Param('id') id: User['id']): Promise<void> {
-  //   return this.userService.delete(id);
-  // }
-
-  // auth 부분의 me가 필요없을 거 같앗 ㅓ
   @Get('me')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
@@ -87,7 +58,7 @@ export class UserController {
   ): Promise<NullableType<UserResDto>> {
     return plainToInstance(
       UserResDto,
-      await this.userService.update(request.user, userDto),
+      await this.userService.update(request.user.id, userDto),
     );
   }
 

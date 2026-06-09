@@ -5,12 +5,17 @@ import {
 } from '@nestjs/common';
 import { Challenge } from './entities/challenge.entity';
 import { Repository } from 'typeorm';
-import { ConfigService } from '@nestjs/config';
 import { NotFoundException } from '@nestjs/common';
 import { CreateMusicDto } from './dto/create-music.dto';
 import { VideoPoseExtractorUtil } from './utils/video-pose-extractor.util';
 import 'multer';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ChallengeMusic } from './entities/challenge-music.entity';
+import { UserChallenge } from '@/user/entities/user_challenge.entity';
+import {
+  ChallengeResDto,
+  HighScoreDanceInfoDto,
+} from '@/pages/dto/page-home.res.dto';
 
 @Injectable()
 export class ChallengeService {
@@ -20,6 +25,12 @@ export class ChallengeService {
   constructor(
     @InjectRepository(Challenge)
     private readonly challengeRepository: Repository<Challenge>,
+
+    @InjectRepository(ChallengeMusic)
+    private readonly challengeMusicRepository: Repository<ChallengeMusic>,
+
+    @InjectRepository(UserChallenge)
+    private readonly userChallengeRepository: Repository<UserChallenge>,
   ) {}
 
   private formatResponse(challenge: Challenge) {
@@ -36,13 +47,64 @@ export class ChallengeService {
   }
 
   async getChallenges(id: number) {
-    const result = await this.challengeRepository.findOne({ where: { id } });
+    // const result = await this.challengeRepository.findOne({ where: { id } });
+    const result = await this.challengeRepository
+      .createQueryBuilder('challenges')
+      .innerJoinAndSelect('challenge.music', 'music')
+      .where('challenges.id = :id', { id })
+      .getOne();
 
     if (!result) {
       throw new NotFoundException('챌린지를 찾을 수 없습니다.');
     }
 
-    return this.formatResponse(result);
+    // return this.formatResponse(result);
+    return result;
+  }
+
+  async getUserChallenges(userId: number): Promise<HighScoreDanceInfoDto[]> {
+    const challengeData = await this.userChallengeRepository
+      .createQueryBuilder('uc')
+      .select([
+        'uc.challengeId AS challengeId',
+        'uc.score AS score',
+        'uc.createdAt AS createdAt',
+      ])
+      .where('uc.userId = :userId', { userId })
+      .limit(3)
+      .getRawMany();
+
+    const ids = challengeData.map((v) => v.challengeId);
+
+    const challenges = await this.challengeRepository
+      .createQueryBuilder('c')
+      .leftJoinAndSelect('c.challengeMusic', 'cm')
+      .select(['c.id', 'c.title', 'cm.id', 'cm.musicUrl'])
+      .where('c.id IN (:...ids)', { ids })
+      .getMany();
+
+    const result = challenges.map((challenge) => {
+      const uc = challengeData.find(
+        (v) => Number(v.challengeId) === challenge.id,
+      );
+
+      return {
+        id: challenge.id,
+        name: challenge.name,
+        title: challenge.title,
+        description: challenge.description,
+
+        artist: challenge.music.artist,
+        genre: challenge.music.genre,
+        musicUrl: challenge.music.music_url,
+        imgUrl: challenge.music.music_image_url,
+        releaseDate: challenge.music.release_date?.toISOString() ?? '',
+
+        score: uc?.score,
+        createdAt: uc?.createdAt,
+      };
+    });
+    return result;
   }
 
   async getChallengeBodyData(id: number) {
@@ -79,7 +141,6 @@ export class ChallengeService {
 
     const challenge = this.challengeRepository.create({
       name: createMusicDto.name,
-      album_art_url: createMusicDto.album_art_url,
       description: createMusicDto.description,
       difficulty: createMusicDto.difficulty,
       start_time: createMusicDto.start_time || 0,
@@ -96,7 +157,7 @@ export class ChallengeService {
       },
     });
     const saved = await this.challengeRepository.save(challenge);
-    return this.formatResponse(saved);
+    return this.formatResponse(saved[0]);
   }
 
   async searchChallenges(keyword: string) {

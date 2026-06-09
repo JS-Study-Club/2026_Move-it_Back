@@ -22,9 +22,6 @@ export class Challenge {
   @Column()
   title!: string;
 
-  @Column()
-  album_art_url!: string;
-
   @Column({ default: 0 })
   view_count!: number;
 
@@ -41,13 +38,16 @@ export class Challenge {
   start_time!: number;
 
   @Column({ type: 'int', nullable: true })
-  end_time?: number;
+  end_time!: number;
 
   @CreateDateColumn()
   createdAt!: Date;
 
   @UpdateDateColumn()
   updatedAt!: Date;
+
+  @Column({ type: 'int', nullable: false })
+  score!: number;
 
   @ManyToOne(() => ChallengeMusic, (music) => music.challenges, {
     cascade: true,

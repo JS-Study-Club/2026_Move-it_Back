@@ -1,11 +1,7 @@
 import { ChallengeService } from '@/challenge/challenge.service';
 import { UserService } from '@/user/user.service';
 import { Injectable } from '@nestjs/common';
-import {
-  highScoreDanceInfoDto,
-  HomeUserInfo,
-  PageHomeResDto,
-} from './dto/page-home.res.dto';
+import { HomeUserInfo, PageHomeResDto } from './dto/page-home.res.dto';
 import { PracticeService } from '@/practice/practice.service';
 import { plainToInstance } from 'class-transformer';
 import { ChallengeInfo, SearchPageResDto } from './dto/page-search.res.dto';
@@ -27,10 +23,9 @@ export class PagesService {
       await this.userService.findById(userId),
     );
     // 높은 점수를 받은 댄스 영상 | 없으면 없다고
-    const highScoreDanceList = plainToInstance(
-      highScoreDanceInfoDto,
-      await this.userService.getUserPractice(userId),
-    );
+    // 챌린지를 한 사용자를 검색 >> 반환은 챌린지의 형식 (아래와 같음)
+    const highScoreDanceList =
+      await this.challengeService.getUserChallenges(userId);
 
     // 오늘의 추천 댄스 챌린지
     const recommendedChallenge =
@@ -42,7 +37,7 @@ export class PagesService {
       recommendedChallengeList: recommendedChallenge,
     };
   }
-  async getSearchPageData(limit = 3): Promise<SearchPageResDto> {
+  async getSearchPageData(limit: number = 3): Promise<SearchPageResDto> {
     const recommendKeywords =
       await this.challengeService.getRecommendKeywords();
 
@@ -82,7 +77,7 @@ export class PagesService {
       await this.userService.findById(userId),
     );
     const recentPracticeDance =
-      await this.userService.getRecentPractice(userId);
+      await this.challengeService.getUserChallenges(userId);
 
     return {
       userInfo,

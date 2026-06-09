@@ -14,7 +14,6 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResDto } from './dto/user-res.dto';
 import { plainToInstance } from 'class-transformer';
 import { UserChallenge } from './entities/user_challenge.entity';
-import { highScoreDanceInfoDto } from '@/pages/dto/page-home.res.dto';
 
 @Injectable()
 export class UserService {
@@ -85,15 +84,6 @@ export class UserService {
       throw new NotFoundException('유저를 찾을 수 없습니다.');
     }
 
-    let password = user.password;
-    if (dto.password) {
-      const isPwSame = await bcrypt.compare(dto.password, user.password);
-      if (!isPwSame) {
-        const salt = await bcrypt.genSalt();
-        password = await bcrypt.hash(dto.password, salt);
-      }
-    }
-
     let email = user.email;
     if (dto.email) {
       const userObject = await this.userRepository.findOneBy({
@@ -114,7 +104,6 @@ export class UserService {
       ...user,
       ...dto,
       email: email,
-      password: password,
     });
     await this.userRepository.save(updatedUser);
     return updatedUser;
@@ -147,21 +136,6 @@ export class UserService {
     return user;
   }
 
-  async getUserPractice(
-    id: User['id'],
-    limit = 3,
-  ): Promise<highScoreDanceInfoDto[]> {
-    const userPractice = await this.userChallengeRepository.find({
-      where: {
-        userId: String(id),
-      },
-      order: { score: 'ASC' },
-
-      take: limit,
-    });
-    return plainToInstance(highScoreDanceInfoDto, userPractice);
-  }
-
   async findPracticeChallengeById(id: User['id']): Promise<number | undefined> {
     const result = await this.userChallengeRepository
       .createQueryBuilder('uc')
@@ -172,19 +146,5 @@ export class UserService {
       .getRawOne<{ id: number }>();
 
     return result?.id;
-  }
-
-  async getRecentPractice(userId: User['id'], limit = 10): Promise<any> {
-    const recentPractices = await this.userChallengeRepository.find({
-      where: {
-        userId: String(userId),
-      },
-      order: {
-        createdAt: 'DESC',
-      },
-      take: limit,
-    });
-
-    return plainToInstance(highScoreDanceInfoDto, recentPractices);
   }
 }

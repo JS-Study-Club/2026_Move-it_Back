@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsNotEmpty,
@@ -7,6 +7,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { BaseDto } from './base.dto';
+import { Challenge } from '@/challenge/entities/challenge.entity';
 
 export class HomeUserInfo extends BaseDto {
   @IsString()
@@ -26,18 +27,36 @@ export class HomeUserInfo extends BaseDto {
   levelTitle: string;
 }
 
-export class highScoreDanceInfoDto extends BaseDto {
-  title: string;
-  releasedAt: string;
-  xp: number;
-  img_url: string;
+export class HighScoreDanceInfoDto extends BaseDto {
+  @Expose({ name: 'createdAt' })
+  createdAt: Date;
 }
 
 export class RecommendedChallengeListDto extends BaseDto {
-  img_url: string;
+  @Expose({ name: 'view_count' })
+  viewCount: number;
+}
+
+export class ChallengeResDto extends BaseDto {
+  id: number;
+  artist: string;
+  name: string;
   title: string;
-  comment: string;
-  hashtag: string[];
+  genre: string;
+
+  score: number;
+
+  @Expose({ name: 'music_url' })
+  musicUrl: string;
+
+  @Expose({ name: 'music_img_url' })
+  imgUrl: string;
+
+  @Transform(({ value }) => value.toISOString())
+  @Expose({ name: 'release_date' })
+  releaseDate: string;
+
+  description: string;
 }
 
 export class PageHomeResDto extends BaseDto {
@@ -46,9 +65,8 @@ export class PageHomeResDto extends BaseDto {
   user: HomeUserInfo;
 
   @IsArray()
-  @Type(() => highScoreDanceInfoDto)
-  @ValidateNested({ each: true })
-  highScoreDance: highScoreDanceInfoDto[];
+  @Type(() => HighScoreDanceInfoDto)
+  highScoreDance: HighScoreDanceInfoDto[];
 
   @IsArray()
   @Type(() => RecommendedChallengeListDto)
