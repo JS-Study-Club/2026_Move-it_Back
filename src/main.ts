@@ -1,4 +1,4 @@
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
@@ -8,18 +8,21 @@ import { json, urlencoded } from 'express';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.setGlobalPrefix('api');
+
   // 유효성 검사
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,
+      // whitelist: true,
       forbidNonWhitelisted: true,
-      transform: true,
+      // transform: true,
     }),
   );
   app.use(cookieParser());
   // Increase body limit for large pose data
   app.use(json({ limit: '50mb' }));
   app.use(urlencoded({ limit: '50mb', extended: true }));
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   // Enable CORS  app.enableCors({
   const corsOptions = {
@@ -31,7 +34,7 @@ async function bootstrap() {
 
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,
+      // whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
     }),
@@ -43,6 +46,7 @@ async function bootstrap() {
     .setDescription('API 상세 설명')
     .setVersion('1.0')
     .addBearerAuth()
+    .addServer('http://localhost:3000') //TODO : 배포시 수정
     .build();
 
   // 2. Swagger 문서 생성

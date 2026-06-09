@@ -2,7 +2,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JwtPayloadType } from '@/utils/types/jwt-payload.type';
+import { JwtPayloadType } from '@/auth/utils/types/jwt-payload.type';
 // TODO : 토큰 검사, 유저 정보 검증, req.user에 정보 전달
 
 @Injectable()

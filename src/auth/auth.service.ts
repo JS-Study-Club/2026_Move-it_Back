@@ -11,14 +11,14 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { User } from '@/user/entities/user.entity';
 import { LoginReqDto } from './dto/login.req.dto';
-import { LoginResDto } from './dto/login.res.dto';
 import { RegisterReqDto } from './dto/register.req.dto';
 import ms from 'ms';
 import { RefreshResDto } from './dto/refresh.res.dto';
 import crypto, { UUID } from 'crypto';
-import { JwtPayloadType } from '@/utils/types/jwt-payload.type';
-import { JwtRefreshPayloadType } from '@/utils/types/jwt-refresh-payload.type';
+import { JwtPayloadType } from '@/auth/utils/types/jwt-payload.type';
+import { JwtRefreshPayloadType } from '@/auth/utils/types/jwt-refresh-payload.type';
 import { UserResDto } from '@/user/dto/user-res.dto';
+import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class AuthService {
@@ -65,7 +65,7 @@ export class AuthService {
     );
 
     return {
-      user: user,
+      user: plainToInstance(UserResDto, user),
       accessToken: token,
       refreshToken: refreshToken,
       tokenExpires: tokenExpires,
@@ -74,7 +74,6 @@ export class AuthService {
 
   async register(dto: RegisterReqDto): Promise<void> {
     const existingUser = await this.userService.findByUserId(dto.userId);
-    // TODO : 중복 이메일, 중복 이름 - UNIQUE 확인
     if (existingUser) {
       if (existingUser.username === dto.username) {
         throw new ConflictException({
@@ -105,10 +104,14 @@ export class AuthService {
         message: '로그아웃 혹은 존재하지 않는 사용자',
       });
     }
-    const isRefreshTokenMatch = await bcrypt.compare(
-      currentRefreshToken,
-      (await this.userService.findRefreshTokenById(id)).refreshToken,
-    );
+    const dbRfToken = await this.userService.findRefreshTokenById(id);
+    if (!dbRfToken) {
+      throw new UnauthorizedException(
+        '인증 세션이 만료되었습니다. 다시 로그인해주세요.',
+      );
+    }
+    const isRefreshTokenMatch = bcrypt.compare(currentRefreshToken, dbRfToken);
+
     if (!isRefreshTokenMatch) {
       throw new UnauthorizedException({ message: '다시 로그인 해주세요' }); // 잘못된 리프레시 토큰
     }
@@ -137,9 +140,9 @@ export class AuthService {
     accessPayload: JwtPayloadType,
     refreshPayload: JwtRefreshPayloadType,
   ) {
-    const tokenExpiresIn = (await this.configService.getOrThrow<string>(
+    const tokenExpiresIn = this.configService.getOrThrow<string>(
       'auth.jwtTokenExpires',
-    )) as any;
+    ) as any;
     const tokenExpires = Date.now() + ms(tokenExpiresIn);
 
     const [token, refreshToken] = await Promise.all([

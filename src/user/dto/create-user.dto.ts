@@ -6,7 +6,7 @@ import {
   IsNotEmpty,
   MinLength,
 } from 'class-validator';
-import { lowerCaseTransformer } from '../../utils/transformers/lower-case.transformer';
+import { lowerCaseTransformer } from '../../auth/utils/transformers/lower-case.transformer';
 import { Optional } from '@nestjs/common';
 
 export class CreateUserDto {

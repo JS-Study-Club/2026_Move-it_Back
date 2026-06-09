@@ -14,7 +14,12 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
-import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { RefreshResDto } from './dto/refresh.res.dto';
 import { LoginReqDto } from './dto/login.req.dto';
 import { LoginResDto } from './dto/login.res.dto';
@@ -65,6 +70,7 @@ export class AuthController {
   // }
 
   @Post('refresh')
+  @ApiOperation({ summary: '클라이언트 토큰 재요청 (인증 만료 시)' })
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt-refresh'))
   @ApiOkResponse({ type: RefreshResDto })
