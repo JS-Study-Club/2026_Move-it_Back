@@ -12,10 +12,7 @@ import 'multer';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ChallengeMusic } from './entities/challenge-music.entity';
 import { UserChallenge } from '@/user/entities/user_challenge.entity';
-import {
-  ChallengeResDto,
-  HighScoreDanceInfoDto,
-} from '@/pages/dto/page-home.res.dto';
+import { HighScoreDanceInfoDto } from '@/pages/dto/page-home.res.dto';
 
 @Injectable()
 export class ChallengeService {
@@ -61,32 +58,37 @@ export class ChallengeService {
     // return this.formatResponse(result);
     return result;
   }
-
   async getUserChallenges(userId: number): Promise<HighScoreDanceInfoDto[]> {
     const challengeData = await this.userChallengeRepository
       .createQueryBuilder('uc')
       .select([
-        'uc.challengeId AS challengeId',
+        'uc.challenge_id AS challenge_id ',
         'uc.score AS score',
         'uc.createdAt AS createdAt',
       ])
-      .where('uc.userId = :userId', { userId })
+      .where('uc.user_id = :userId', { userId })
+      .orderBy('uc.score', 'DESC')
       .limit(3)
       .getRawMany();
 
-    const ids = challengeData.map((v) => v.challengeId);
+    const ids = challengeData.map((v) => Number(v.challenge_id));
+
+    if (ids.length === 0) {
+      return [];
+    }
 
     const challenges = await this.challengeRepository
       .createQueryBuilder('c')
-      .leftJoinAndSelect('c.challengeMusic', 'cm')
-      .select(['c.id', 'c.title', 'cm.id', 'cm.musicUrl'])
+      .leftJoinAndSelect('c.music', 'cm')
       .where('c.id IN (:...ids)', { ids })
       .getMany();
 
-    const result = challenges.map((challenge) => {
-      const uc = challengeData.find(
-        (v) => Number(v.challengeId) === challenge.id,
-      );
+    const challengeMap = new Map(
+      challengeData.map((v) => [Number(v.challenge_id), v]),
+    );
+
+    return challenges.map((challenge) => {
+      const uc = challengeMap.get(challenge.id);
 
       return {
         id: challenge.id,
@@ -94,17 +96,16 @@ export class ChallengeService {
         title: challenge.title,
         description: challenge.description,
 
-        artist: challenge.music.artist,
-        genre: challenge.music.genre,
-        musicUrl: challenge.music.music_url,
-        imgUrl: challenge.music.music_image_url,
-        releaseDate: challenge.music.release_date?.toISOString() ?? '',
+        artist: challenge.music?.artist ?? '',
+        genre: challenge.music?.genre ?? '',
+        musicUrl: challenge.music?.music_url ?? '',
+        imgUrl: challenge.music?.music_image_url ?? '',
+        releaseDate: challenge.music?.release_date ?? '',
 
-        score: uc?.score,
-        createdAt: uc?.createdAt,
+        score: uc?.score ?? 0,
+        createdAt: uc?.createdAt ?? '',
       };
     });
-    return result;
   }
 
   async getChallengeBodyData(id: number) {
@@ -189,9 +190,9 @@ export class ChallengeService {
 
   async getDailyChallenges(limit: number) {
     const date = new Date();
-    date.setDate(date.getDate() - 3); // 최근 3일 내의 데이터 중 가장 인기있는 것을 선정하여 '일간 추천'의 풀을 넉넉하게
+    date.setDate(date.getDate() - 3);
 
-    const result = await this.challengeRepository
+    const challenges = await this.challengeRepository
       .createQueryBuilder('challenge')
       .leftJoinAndSelect('challenge.music', 'music')
       .where('challenge.createdAt >= :date', { date })
@@ -200,7 +201,19 @@ export class ChallengeService {
       .take(limit)
       .getMany();
 
-    return result.map((c) => this.formatResponse(c));
+    return challenges.map((challenge) => ({
+      id: challenge.id,
+      name: challenge.name,
+      title: challenge.title,
+      description: challenge.description,
+
+      viewCount: challenge.view_count,
+      artist: challenge.music?.artist ?? '',
+      genre: challenge.music?.genre ?? '',
+      musicUrl: challenge.music?.music_url ?? '',
+      imgUrl: challenge.music?.music_image_url ?? '',
+      releaseDate: challenge.music?.release_date ?? '',
+    }));
   }
 
   async getRecommendKeywords() {

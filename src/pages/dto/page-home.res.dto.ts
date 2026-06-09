@@ -12,6 +12,10 @@ import { Challenge } from '@/challenge/entities/challenge.entity';
 export class HomeUserInfo extends BaseDto {
   @IsString()
   @IsNotEmpty()
+  username: string;
+
+  @IsString()
+  @IsNotEmpty()
   teacherId: string;
 
   @IsNumber()
