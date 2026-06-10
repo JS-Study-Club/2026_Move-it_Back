@@ -10,7 +10,7 @@ import {
   OneToOne,
 } from 'typeorm';
 import { TeacherCharacter } from './teacher_character.entity';
-import { Level } from './user_level.entity';
+import { Levels } from './levels.entity';
 import { UserChallenge } from './user_challenge.entity';
 
 @Entity('users')
@@ -55,7 +55,7 @@ export class User {
   @JoinColumn({ name: 'teacher_character_id' })
   teacherCharacter!: TeacherCharacter;
 
-  @ManyToOne(() => Level, (levelInfo) => levelInfo.users)
+  @ManyToOne(() => Levels)
   @JoinColumn({ name: 'level_id' })
-  levelInfo!: Level;
+  levelInfo!: Levels;
 }

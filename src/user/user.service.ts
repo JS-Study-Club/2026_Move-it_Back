@@ -11,8 +11,6 @@ import { Repository } from 'typeorm';
 import { CreateUserDto } from '@/user/dto/create-user.dto';
 import { User } from './entities/user.entity';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { UserResDto } from './dto/user-res.dto';
-import { plainToInstance } from 'class-transformer';
 import { UserChallenge } from './entities/user_challenge.entity';
 
 @Injectable()
@@ -55,12 +53,17 @@ export class UserService {
     return await this.userRepository.save(newUser);
   }
 
-  async findById(id: User['id']): Promise<UserResDto | null> {
-    const user = await this.userRepository.findOneBy({ id });
+  async findById(id: User['id']): Promise<User | null> {
+    const user = await this.userRepository.findOne({
+      where: { id },
+      relations: {
+        levelInfo: true,
+      },
+    });
     if (!user) {
       return null;
     }
-    return plainToInstance(UserResDto, user);
+    return user;
   }
 
   async findByUserId(userId: User['user_id']): Promise<User | null> {
