@@ -18,6 +18,10 @@ export class PagesService {
 
   async getHomePageData(userId: number): Promise<PageHomeResDto> {
     // 유저의 선생님 사진 / 레벨 / 레벨타이틀 / xp
+    // const user = plainToInstance(
+    //   Homeuser,
+    //   await this.userService.findById(userId),
+    // );
     const userInfo = plainToInstance(
       HomeUserInfo,
       await this.userService.findById(userId),
@@ -72,7 +76,7 @@ export class PagesService {
   }
 
   async getMyPageData(userId: number) {
-    const userInfo = plainToInstance(
+    const user = plainToInstance(
       HomeUserInfo,
       await this.userService.findById(userId),
     );
@@ -80,7 +84,7 @@ export class PagesService {
       await this.challengeService.getUserChallenges(userId);
 
     return {
-      userInfo,
+      user,
       recentPracticeDance,
     };
   }
