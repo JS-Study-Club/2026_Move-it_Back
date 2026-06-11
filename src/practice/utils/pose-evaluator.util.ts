@@ -56,14 +56,17 @@ export class PoseEvaluator {
     };
   }
 
-  private static calculateFrameAccuracy(tFrame: any[], uFrame: any[]): number {
-    if (!tFrame || !uFrame || tFrame.length < 33 || uFrame.length < 33) return 0;
+  private static calculateFrameAccuracy(tFrame: any, uFrame: any): number {
+    // 프레임 형식: { t, l: [33개 랜드마크] }
+    const tl = tFrame?.l;
+    const ul = uFrame?.l;
+    if (!tl || !ul || tl.length < 33 || ul.length < 33) return 0;
 
     let distanceSum = 0;
     for (const idx of this.KEY_POINTS) {
       // Sometimes missing property
-      const t = tFrame[idx];
-      const u = uFrame[idx];
+      const t = tl[idx];
+      const u = ul[idx];
       if (!t || !u) continue;
 
       const dx = t.x - u.x;
@@ -75,14 +78,15 @@ export class PoseEvaluator {
     const avgDist = distanceSum / this.KEY_POINTS.length;
     // 0.3 avg distance per joint is large on normalized screen space.
     // Score tends to 1 as avgDist tends to 0
-    return Math.max(0, 1 - (avgDist * 2)); 
+    return Math.max(0, 1 - (avgDist * 2));
   }
 
-  private static calculateExtension(frame: any[]): number {
-    if (!frame || frame.length < 33) return 0;
-    
-    const hipLeft = frame[23];
-    const hipRight = frame[24];
+  private static calculateExtension(frame: any): number {
+    const fl = frame?.l;
+    if (!fl || fl.length < 33) return 0;
+
+    const hipLeft = fl[23];
+    const hipRight = fl[24];
     if (!hipLeft || !hipRight) return 0;
 
     const midHipX = (hipLeft.x + hipRight.x) / 2;
@@ -90,27 +94,31 @@ export class PoseEvaluator {
 
     let ext = 0;
     for (const idx of [15, 16, 27, 28]) { // extremities
-      if (!frame[idx]) continue;
-      const dx = frame[idx].x - midHipX;
-      const dy = frame[idx].y - midHipY;
+      if (!fl[idx]) continue;
+      const dx = fl[idx].x - midHipX;
+      const dy = fl[idx].y - midHipY;
       ext += Math.sqrt(dx * dx + dy * dy);
     }
     return ext;
   }
 
-  private static calculateVelocityMatch(tPrev: any[], tCurr: any[], uPrev: any[], uCurr: any[]): number {
-    if (!tPrev || !tCurr || !uPrev || !uCurr) return 0;
+  private static calculateVelocityMatch(tPrev: any, tCurr: any, uPrev: any, uCurr: any): number {
+    const tp = tPrev?.l;
+    const tc = tCurr?.l;
+    const up = uPrev?.l;
+    const uc = uCurr?.l;
+    if (!tp || !tc || !up || !uc) return 0;
 
     let velMatchSum = 0;
     for (const idx of this.KEY_POINTS) {
-      if (!tPrev[idx] || !tCurr[idx] || !uPrev[idx] || !uCurr[idx]) continue;
+      if (!tp[idx] || !tc[idx] || !up[idx] || !uc[idx]) continue;
 
-      const tVx = tCurr[idx].x - tPrev[idx].x;
-      const tVy = tCurr[idx].y - tPrev[idx].y;
+      const tVx = tc[idx].x - tp[idx].x;
+      const tVy = tc[idx].y - tp[idx].y;
       const tMag = Math.sqrt(tVx * tVx + tVy * tVy);
 
-      const uVx = uCurr[idx].x - uPrev[idx].x;
-      const uVy = uCurr[idx].y - uPrev[idx].y;
+      const uVx = uc[idx].x - up[idx].x;
+      const uVy = uc[idx].y - up[idx].y;
       const uMag = Math.sqrt(uVx * uVx + uVy * uVy);
 
       const diff = Math.abs(tMag - uMag);

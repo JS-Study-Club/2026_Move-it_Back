@@ -67,7 +67,12 @@ export class UserService {
   }
 
   async findByUserId(userId: User['user_id']): Promise<User | null> {
-    const user = await this.userRepository.findOneBy({ user_id: userId });
+    const user = await this.userRepository.findOne({
+      where: { user_id: userId },
+      relations: {
+        levelInfo: true,
+      },
+    });
     if (!user) return null;
 
     return user;
