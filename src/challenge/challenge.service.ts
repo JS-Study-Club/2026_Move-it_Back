@@ -32,13 +32,16 @@ export class ChallengeService {
 
   private formatResponse(challenge: Challenge) {
     if (!challenge) return challenge;
-    const { like_count, music, ...rest } = challenge as any;
+    // body_data(포즈 원본 데이터)는 목록 응답에서 불필요하게 크므로 제외합니다.
+    const { like_count, music, body_data, ...rest } = challenge as any;
     return {
       ...rest,
       genre: music?.genre,
       artist: music?.artist,
       length: music?.length,
       music_url: music?.music_url,
+      // 프론트 썸네일 표시에 사용됩니다.
+      music_image_url: music?.music_image_url ?? null,
       release_date: music?.release_date,
     };
   }
@@ -142,8 +145,12 @@ export class ChallengeService {
 
     const challenge = this.challengeRepository.create({
       name: createMusicDto.name,
+      // title 컬럼은 NOT NULL 이지만 생성 DTO에 별도 title 입력이 없어 곡명을 사용합니다.
+      title: createMusicDto.name,
       description: createMusicDto.description,
       difficulty: createMusicDto.difficulty,
+      // score 컬럼도 NOT NULL 이므로 기본값 0으로 채웁니다.
+      score: 0,
       start_time: createMusicDto.start_time || 0,
       end_time: createMusicDto.end_time || undefined,
       music: {
@@ -151,14 +158,15 @@ export class ChallengeService {
         artist: createMusicDto.artist,
         length: createMusicDto.length,
         music_url: createMusicDto.music_url,
+        music_image_url: createMusicDto.music_image_url,
         release_date: createMusicDto.release_date,
       },
-      body_data: {
-        pose_data: extractedPoseData,
-      },
+      // body_data: {
+      //   pose_data: extractedPoseData,
+      // },
     });
     const saved = await this.challengeRepository.save(challenge);
-    return this.formatResponse(saved[0]);
+    return this.formatResponse(saved);
   }
 
   async searchChallenges(keyword: string) {

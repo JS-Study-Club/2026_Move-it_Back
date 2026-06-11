@@ -17,8 +17,7 @@ import { RefreshResDto } from './dto/refresh.res.dto';
 import crypto, { UUID } from 'crypto';
 import { JwtPayloadType } from '@/auth/utils/types/jwt-payload.type';
 import { JwtRefreshPayloadType } from '@/auth/utils/types/jwt-refresh-payload.type';
-import { UserResDto } from '@/user/dto/user-res.dto';
-import { plainToInstance } from 'class-transformer';
+import { AuthUserDto } from './dto/login.res.dto';
 
 @Injectable()
 export class AuthService {
@@ -34,7 +33,7 @@ export class AuthService {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
         errors: {
-          userId: 'not found',
+          userId: '존재하지 않는 아이디입니다.',
         },
       });
     }
@@ -42,7 +41,7 @@ export class AuthService {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
         errors: {
-          password: 'empty pw',
+          password: '비밀번호가 설정되지 않은 계정입니다.',
         },
       });
     }
@@ -54,7 +53,7 @@ export class AuthService {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
         errors: {
-          password: 'incorrect pw',
+          password: '비밀번호가 올바르지 않습니다.',
         },
       });
     }
@@ -64,8 +63,19 @@ export class AuthService {
       refreshPayload,
     );
 
+    // 프론트엔드가 기대하는 camelCase 형태로 명시적으로 매핑합니다.
+    // (UserResDto 의 @Expose({ name }) 가 원본 키로 되돌아가는 문제 회피 + 민감정보 미노출)
+    const userPayload: AuthUserDto = {
+      userId: user.user_id,
+      username: user.username,
+      teacherId: user.teacher_character_id,
+      level: user.level,
+      levelXp: user.level_xp,
+      levelTitle: user.levelInfo?.levelTitle ?? '',
+    };
+
     return {
-      user: plainToInstance(UserResDto, user),
+      user: userPayload,
       accessToken: token,
       refreshToken: refreshToken,
       tokenExpires: tokenExpires,
@@ -73,17 +83,12 @@ export class AuthService {
   }
 
   async register(dto: RegisterReqDto): Promise<void> {
+    // user_id 는 unique 이므로, 이미 존재하면 아이디 중복으로 처리합니다.
     const existingUser = await this.userService.findByUserId(dto.userId);
     if (existingUser) {
-      if (existingUser.username === dto.username) {
-        throw new ConflictException({
-          message: '이미 가입된 아이디입니다',
-        });
-      }
-      if (existingUser.email === dto.email) {
-        throw new ConflictException({ message: '이미 사용 중인 이메일입니다' });
-      }
+      throw new ConflictException({ message: '이미 사용 중인 아이디입니다' });
     }
+    // 이메일 중복은 userService.create 내부에서 검증/예외 처리됩니다.
     await this.userService.create({
       username: dto.username,
       email: dto.email,
@@ -182,7 +187,7 @@ export class AuthService {
 }
 
 interface LoginResult {
-  user: UserResDto;
+  user: AuthUserDto;
   accessToken: string;
   refreshToken: string;
   tokenExpires: string;

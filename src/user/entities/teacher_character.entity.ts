@@ -18,8 +18,8 @@ export class TeacherCharacter {
     @Column({ type: 'varchar', length: 255 })
     comment!: string;
 
-    @Column({ type: 'text' })
-    img_url!: string;
+    // @Column({ type: 'text' })
+    // img_url!: string;
 
     @OneToMany(() => User, user => user.teacherCharacter)
     users!: User[];

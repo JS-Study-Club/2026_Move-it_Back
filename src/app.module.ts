@@ -32,6 +32,7 @@ import { PagesModule } from './pages/pages.module';
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
+        schema: configService.get<string>('DB_SCHEMA'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: true,
         autoLoadEntities: true,
