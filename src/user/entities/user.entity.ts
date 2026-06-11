@@ -1,48 +1,61 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ForeignKey, ManyToOne, JoinColumn, OneToMany, OneToOne } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  ForeignKey,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
+  OneToOne,
+} from 'typeorm';
 import { TeacherCharacter } from './teacher_character.entity';
-import { Level } from './user_level.entity';
+import { Levels } from './levels.entity';
 import { UserChallenge } from './user_challenge.entity';
 
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn()
-  id!: string;
+  id!: number;
 
-  @Column('varchar', {length:32})
+  @Column('varchar', { unique: true, length: 255 })
   user_id!: string;
 
-  @Column('varchar', {unique: true, length:255})
+  @Column('varchar', { nullable: true, length: 32 })
+  username!: string;
+
+  @Column('varchar', { unique: true, length: 255 })
   email!: string;
 
-  @Column('varchar', {nullable: true, length:32}) 
-  name!: string;
-
-  @Column('varchar', {length:255})
+  @Column('varchar', { length: 255 })
   password!: string;
 
-  @Column({type:'int'})
+  @Column({ type: 'int' })
   teacher_character_id!: number;
 
-  @Column({type:'int', default:1})
+  @Column({ type: 'int', default: 1 })
   level!: number;
 
-  @Column({type:'int'})
+  @Column({ type: 'int', default: 1 })
   level_id!: number;
-  
-  @Column({type:'int', default:0})
+
+  @Column({ type: 'int', default: 0 })
   level_xp!: number;
 
-  @CreateDateColumn() 
+  @CreateDateColumn()
   createdAt!: Date;
 
-  @OneToMany(() => UserChallenge, userChallenge => userChallenge.users)
+  @Column('varchar', { length: 255, nullable: true })
+  refreshToken: string;
+
+  @OneToMany(() => UserChallenge, (userChallenge) => userChallenge.users)
   challenges!: UserChallenge[];
 
-  @OneToOne(() => TeacherCharacter, (teacher) => teacher.users)
-  @JoinColumn({ name: 'teacher_character_id' }) 
-  teacherCharacter!: TeacherCharacter; 
+  @ManyToOne(() => TeacherCharacter, (teacher) => teacher.users)
+  @JoinColumn({ name: 'teacher_character_id' })
+  teacherCharacter!: TeacherCharacter;
 
-  @OneToOne(() => Level, (levelInfo) => levelInfo.users)
+  @ManyToOne(() => Levels)
   @JoinColumn({ name: 'level_id' })
-  levelInfo!: Level;
+  levelInfo!: Levels;
 }

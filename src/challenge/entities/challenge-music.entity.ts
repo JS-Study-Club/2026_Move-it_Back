@@ -1,4 +1,11 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToMany,
+} from 'typeorm';
 import { Challenge } from './challenge.entity';
 
 @Entity('challenge_music')
@@ -21,12 +28,15 @@ export class ChallengeMusic {
   @Column({ nullable: true, type: 'date' })
   release_date?: Date;
 
+  @Column({ nullable: true})
+  music_image_url: string;
+
   @CreateDateColumn()
   createdAt!: Date;
 
   @UpdateDateColumn()
   updatedAt!: Date;
 
-  @OneToMany(() => Challenge, challenge => challenge.music)
+  @OneToMany(() => Challenge, (challenge) => challenge.music)
   challenges!: Challenge[];
 }

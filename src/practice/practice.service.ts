@@ -101,7 +101,7 @@ export class PracticeService {
 
     const results = await this.userChallengeRepository.find({
       where: whereCondition,
-      relations: ['challenge'],
+      relations: ['challenge', 'challenge.music'],
       order: { createdAt: 'DESC' },
     });
 

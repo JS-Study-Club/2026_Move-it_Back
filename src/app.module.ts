@@ -1,6 +1,6 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule, ConfigService  } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -10,12 +10,19 @@ import { PracticeModule } from './practice/practice.module';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import configuration from './config/configuration';
+import { JwtStrategy } from './auth/strategy/jwt.strategy';
+import { JwtRefreshStrategy } from './auth/strategy/jwt-refresh.strategy';
+import { PagesModule } from './pages/pages.module';
 
 @Module({
-  imports: [ ConfigModule.forRoot({
+  imports: [
+    ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
-    }), TypeOrmModule.forRootAsync({
+      load: [configuration],
+    }),
+    TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
@@ -25,12 +32,21 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
+        schema: configService.get<string>('DB_SCHEMA'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true, // 개발 환경에서는 true, 배포 환경에서는 false로 설정하는 것이 좋습니다. 
+        synchronize: true,
+        autoLoadEntities: true,
       }),
-    }), AuthModule, UserModule, ChallengeModule, PracticeModule,],
+    }),
+    AuthModule,
+    UserModule,
+    ChallengeModule,
+    PracticeModule,
+    PagesModule,
+  ],
   controllers: [AppController],
-  providers: [AppService,
+  providers: [
+    AppService,
     {
       provide: APP_FILTER,
       useClass: HttpExceptionFilter, // 전역 필터로 사용할 클래스 지정
@@ -38,7 +54,9 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
     {
       provide: APP_INTERCEPTOR,
       useClass: TransformInterceptor,
-    }
+    },
+    JwtStrategy,
+    JwtRefreshStrategy,
   ],
 })
 export class AppModule {}
