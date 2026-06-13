@@ -224,6 +224,7 @@ export class ChallengeService {
       musicUrl: challenge.music?.music_url ?? '',
       imgUrl: challenge.music?.music_image_url ?? '',
       releaseDate: challenge.music?.release_date ?? '',
+      length: challenge.music?.length ?? 0,
     }));
   }
 
