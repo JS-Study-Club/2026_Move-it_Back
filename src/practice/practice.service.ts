@@ -8,6 +8,16 @@ import { FEEDBACK_MESSAGES } from './constants/feedback.constant';
 import { UserChallenge } from '../user/entities/user_challenge.entity';
 import { User } from '../user/entities/user.entity';
 import { Challenge } from '../challenge/entities/challenge.entity';
+import { UserService } from '../user/user.service';
+
+// 점수별 부여 경험치.
+function getXpReward(totalScore: number): number {
+  if (totalScore >= 90) return 4;
+  if (totalScore >= 80) return 3;
+  if (totalScore >= 70) return 2;
+  if (totalScore >= 60) return 1;
+  return 0.5;
+}
 
 @Injectable()
 export class PracticeService {
@@ -20,6 +30,7 @@ export class PracticeService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Challenge)
     private readonly challengeRepository: Repository<Challenge>,
+    private readonly userService: UserService,
   ) {}
 
   async evaluatePractice(challengeId: number, dto: EvaluatePracticeDto) {
@@ -70,6 +81,10 @@ export class PracticeService {
     });
 
     const savedUserChallenge = await this.userChallengeRepository.save(newUserChallenge);
+
+    // 연습 완료 보상: 점수에 따라 xp 부여 → 레벨업 처리
+    const xpGain = getXpReward(totalScore);
+    await this.userService.updateLevel(user.id, xpGain);
 
     return {
       userChallengeId: savedUserChallenge.id,

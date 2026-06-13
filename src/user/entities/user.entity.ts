@@ -33,20 +33,20 @@ export class User {
   @Column({ type: 'int' })
   teacher_character_id!: number;
 
+  // 현재 레벨 (1~).
   @Column({ type: 'int', default: 1 })
   level!: number;
 
-  @Column({ type: 'int', default: 1 })
-  level_id!: number;
-
-  @Column({ type: 'int', default: 0 })
+  // 현재 레벨 안에서의 경험치 진행 (0 ~ xpRequired-1).
+  // DB 컬럼은 기존명 level_xp 유지하되, 의미는 변경됨.
+  @Column({ type: 'float', default: 0 })
   level_xp!: number;
 
   @CreateDateColumn()
   createdAt!: Date;
 
   @Column('varchar', { length: 255, nullable: true })
-  refreshToken: string;
+  refreshToken!: string;
 
   @OneToMany(() => UserChallenge, (userChallenge) => userChallenge.users)
   challenges!: UserChallenge[];
@@ -54,8 +54,4 @@ export class User {
   @ManyToOne(() => TeacherCharacter, (teacher) => teacher.users)
   @JoinColumn({ name: 'teacher_character_id' })
   teacherCharacter!: TeacherCharacter;
-
-  @ManyToOne(() => Levels)
-  @JoinColumn({ name: 'level_id' })
-  levelInfo!: Levels;
 }
