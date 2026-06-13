@@ -24,9 +24,10 @@ async function bootstrap() {
   app.use(urlencoded({ limit: '50mb', extended: true }));
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
-  // Enable CORS  app.enableCors({
+  // Enable CORS
+  const corsOrigin = process.env.CORS_ORIGIN || '*';
   const corsOptions = {
-    origin: true, // Allow all origins for now. Can be restricted to specific origins later.
+    origin: corsOrigin === '*' ? true : corsOrigin.split(',').map(o => o.trim()),
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   };
