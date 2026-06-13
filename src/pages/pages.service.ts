@@ -17,15 +17,9 @@ export class PagesService {
   //TODO : refresh logic
 
   async getHomePageData(userId: number): Promise<PageHomeResDto> {
-    // 유저의 선생님 사진 / 레벨 / 레벨타이틀 / xp
-    // const user = plainToInstance(
-    //   Homeuser,
-    //   await this.userService.findById(userId),
-    // );
-    const userInfo = plainToInstance(
-      HomeUserInfo,
-      await this.userService.findById(userId),
-    );
+    // 유저의 선생님 사진 / 레벨 / 레벨타이틀 / xp / 진행률
+    const userInfo = await this.buildHomeUserInfo(userId);
+
     // 높은 점수를 받은 댄스 영상 | 없으면 없다고
     // 챌린지를 한 사용자를 검색 >> 반환은 챌린지의 형식 (아래와 같음)
     const highScoreDanceList =
@@ -39,6 +33,24 @@ export class PagesService {
       user: userInfo,
       highScoreDance: highScoreDanceList,
       recommendedChallengeList: recommendedChallenge,
+    };
+  }
+
+  // 홈/마이페이지가 공통으로 쓰는 유저 정보(레벨/xp 기반 칭호/진행률 계산 포함)를 구성합니다.
+  private async buildHomeUserInfo(userId: number): Promise<HomeUserInfo> {
+    const userEntity = await this.userService.findById(userId);
+    const levelInfo = await this.userService.resolveLevelInfo(
+      userEntity?.level ?? 1,
+      userEntity?.level_xp ?? 0,
+    );
+    return {
+      userId: userEntity?.user_id ?? '',
+      username: userEntity?.username ?? '',
+      teacherId: userEntity?.teacher_character_id ?? 0,
+      level: levelInfo.level,
+      levelXp: levelInfo.xp,
+      levelTitle: levelInfo.tierName,
+      levelProgress: levelInfo.levelProgress,
     };
   }
   async getSearchPageData(limit: number = 3): Promise<SearchPageResDto> {
@@ -76,10 +88,7 @@ export class PagesService {
   }
 
   async getMyPageData(userId: number) {
-    const user = plainToInstance(
-      HomeUserInfo,
-      await this.userService.findById(userId),
-    );
+    const user = await this.buildHomeUserInfo(userId);
     const recentPracticeDance =
       await this.challengeService.getUserChallenges(userId);
 

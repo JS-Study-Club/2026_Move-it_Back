@@ -11,7 +11,8 @@ export class UpdateUserDto {
   @IsEmail()
   email?: string | null;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ type: Number })
   @IsOptional()
-  teacherId?: string | null;
+  @Type(() => Number)
+  teacherId?: number | null;
 }

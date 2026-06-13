@@ -65,6 +65,7 @@ export class ChallengeService {
     const challengeData = await this.userChallengeRepository
       .createQueryBuilder('uc')
       .select([
+        'uc.id AS uc_id',
         'uc.challenge_id AS challenge_id ',
         'uc.score AS score',
         'uc.createdAt AS createdAt',
@@ -95,6 +96,8 @@ export class ChallengeService {
 
       return {
         id: challenge.id,
+        // 피드백 상세(/feedback/:userChallengeId) 진입에 필요한 연습 결과 식별자
+        userChallengeId: uc?.uc_id ?? null,
         name: challenge.name,
         title: challenge.title,
         description: challenge.description,
