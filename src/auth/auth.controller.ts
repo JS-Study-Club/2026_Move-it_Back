@@ -30,6 +30,7 @@ export class AuthController {
       httpOnly: true,
       secure: this.isProd,
       sameSite: 'lax',
+      path: '/',
     });
   }
 
@@ -38,6 +39,7 @@ export class AuthController {
       httpOnly: true,
       secure: this.isProd,
       sameSite: 'lax',
+      path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000, // ms, 7d
     });
   }
@@ -48,6 +50,7 @@ export class AuthController {
       httpOnly: true,
       secure: this.isProd,
       sameSite: 'lax' as const,
+      path: '/',
     };
     res.clearCookie('accessToken', opts);
     res.clearCookie('refreshToken', opts);
