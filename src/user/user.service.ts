@@ -12,6 +12,16 @@ import { CreateUserDto } from '@/user/dto/create-user.dto';
 import { User } from './entities/user.entity';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserChallenge } from './entities/user_challenge.entity';
+import { Levels } from './entities/levels.entity';
+import { getTierName, getXpRequired } from './utils/level.util';
+
+export interface UserLevelInfo {
+  level: number; // 현재 레벨 (1~)
+  xp: number; // 현재 레벨 내 진행 xp
+  levelProgress: number; // 현재 레벨 내 진행률 0~100
+  tierName: string; // 칭호
+  xpRequired: number; // 다음 레벨까지 필요한 xp
+}
 
 @Injectable()
 export class UserService {
@@ -21,7 +31,27 @@ export class UserService {
 
     @InjectRepository(UserChallenge)
     private readonly userChallengeRepository: Repository<UserChallenge>,
+
+    @InjectRepository(Levels)
+    private readonly levelsRepository: Repository<Levels>,
   ) {}
+
+  // 현재 레벨과 xp로부터 칭호/진행률을 계산합니다.
+  async resolveLevelInfo(level: number, xp: number): Promise<UserLevelInfo> {
+    const xpRequired = getXpRequired(level);
+    const levelProgress = Math.min(
+      100,
+      Math.max(0, Math.round((xp / xpRequired) * 100)),
+    );
+
+    return {
+      level,
+      xp: Math.max(0, xp),
+      levelProgress,
+      tierName: getTierName(level),
+      xpRequired,
+    };
+  }
 
   async create(dto: CreateUserDto): Promise<User> {
     let hashedPassword: string | undefined = undefined;
@@ -54,12 +84,7 @@ export class UserService {
   }
 
   async findById(id: User['id']): Promise<User | null> {
-    const user = await this.userRepository.findOne({
-      where: { id },
-      relations: {
-        levelInfo: true,
-      },
-    });
+    const user = await this.userRepository.findOneBy({ id });
     if (!user) {
       return null;
     }
@@ -67,12 +92,7 @@ export class UserService {
   }
 
   async findByUserId(userId: User['user_id']): Promise<User | null> {
-    const user = await this.userRepository.findOne({
-      where: { user_id: userId },
-      relations: {
-        levelInfo: true,
-      },
-    });
+    const user = await this.userRepository.findOneBy({ user_id: userId });
     if (!user) return null;
 
     return user;
@@ -110,15 +130,44 @@ export class UserService {
 
     const updatedUser = this.userRepository.create({
       ...user,
-      ...dto,
       email: email,
     });
+    // 프론트는 teacherId 로 보내지만 실제 컬럼은 teacher_character_id 이므로 명시적으로 매핑합니다.
+    // (예전 ...dto spread 방식은 teacherId 키가 컬럼과 달라 무시되어 저장되지 않았습니다)
+    if (dto.teacherId !== undefined && dto.teacherId !== null) {
+      updatedUser.teacher_character_id = Number(dto.teacherId);
+    }
     await this.userRepository.save(updatedUser);
     return updatedUser;
   }
 
-  async updateLevel(id: User['id'], xp: number): Promise<void> {
-    await this.userRepository.increment({ id }, 'level_xp', xp);
+  // xp를 증가시키고, 필요시 레벨업합니다.
+  // 가능하면 연쇄 레벨업도 처리 (예: xp 15 증가 → 레벨업 2번).
+  async updateLevel(id: User['id'], xpGain: number): Promise<void> {
+    const user = await this.userRepository.findOneBy({ id });
+    if (!user) return;
+
+    let level = user.level;
+    let xp = Math.max(0, user.level_xp ?? 0) + xpGain;
+
+    // 연쇄 레벨업: xp가 xpRequired 이상이면 계속 레벨업
+    while (true) {
+      const xpRequired = getXpRequired(level);
+      if (xp >= xpRequired) {
+        xp -= xpRequired;
+        level += 1;
+      } else {
+        break;
+      }
+    }
+
+    // 변경사항 저장
+    if (user.level !== level || user.level_xp !== xp) {
+      await this.userRepository.update(id, {
+        level,
+        level_xp: xp,
+      });
+    }
   }
 
   async updateRefreshToken(

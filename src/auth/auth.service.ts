@@ -13,7 +13,6 @@ import { User } from '@/user/entities/user.entity';
 import { LoginReqDto } from './dto/login.req.dto';
 import { RegisterReqDto } from './dto/register.req.dto';
 import ms from 'ms';
-import { RefreshResDto } from './dto/refresh.res.dto';
 import crypto, { UUID } from 'crypto';
 import { JwtPayloadType } from '@/auth/utils/types/jwt-payload.type';
 import { JwtRefreshPayloadType } from '@/auth/utils/types/jwt-refresh-payload.type';
@@ -63,15 +62,26 @@ export class AuthService {
       refreshPayload,
     );
 
+    // refresh 토큰(raw)을 DB에 해시 저장해 둬야 이후 /auth/refresh 검증이 가능합니다.
+    // (updateRefreshToken 내부에서 bcrypt 해시 처리합니다)
+    await this.userService.updateRefreshToken(user.id, refreshToken);
+
+    // 현재 레벨/xp로부터 칭호/진행률을 계산합니다.
+    const levelInfo = await this.userService.resolveLevelInfo(
+      user.level,
+      user.level_xp ?? 0,
+    );
+
     // 프론트엔드가 기대하는 camelCase 형태로 명시적으로 매핑합니다.
     // (UserResDto 의 @Expose({ name }) 가 원본 키로 되돌아가는 문제 회피 + 민감정보 미노출)
     const userPayload: AuthUserDto = {
       userId: user.user_id,
       username: user.username,
       teacherId: user.teacher_character_id,
-      level: user.level,
-      levelXp: user.level_xp,
-      levelTitle: user.levelInfo?.levelTitle ?? '',
+      level: levelInfo.level,
+      levelXp: levelInfo.xp,
+      levelTitle: levelInfo.tierName,
+      levelProgress: levelInfo.levelProgress,
     };
 
     return {
@@ -102,7 +112,7 @@ export class AuthService {
     // TODO : 무겁다면 레디스로 리팩토링
     id: User['id'],
     currentRefreshToken: string,
-  ): Promise<RefreshResDto> {
+  ): Promise<RefreshResult> {
     const user = await this.userService.findById(id);
     if (user === null) {
       throw new UnauthorizedException({
@@ -115,24 +125,30 @@ export class AuthService {
         '인증 세션이 만료되었습니다. 다시 로그인해주세요.',
       );
     }
-    const isRefreshTokenMatch = bcrypt.compare(currentRefreshToken, dbRfToken);
+    // 쿠키로 전달된 raw refresh 토큰과 DB에 저장된 해시를 비교합니다(await 필수).
+    const isRefreshTokenMatch = await bcrypt.compare(
+      currentRefreshToken,
+      dbRfToken,
+    );
 
     if (!isRefreshTokenMatch) {
       throw new UnauthorizedException({ message: '다시 로그인 해주세요' }); // 잘못된 리프레시 토큰
     }
 
     const { accessPayload, refreshPayload } = this.getPayloadsData(id);
-    const { refreshToken: newRefreshToken } = await this.getTokensData(
-      accessPayload,
-      refreshPayload,
-    );
+    const {
+      token,
+      refreshToken: newRefreshToken,
+      tokenExpires,
+    } = await this.getTokensData(accessPayload, refreshPayload);
 
-    const salt = await bcrypt.genSalt();
-    const hashedRefreshToken = await bcrypt.hash(newRefreshToken, salt);
-    await this.userService.updateRefreshToken(user.id, hashedRefreshToken);
+    // refresh 토큰 회전(rotation): 새 raw 토큰을 저장(updateRefreshToken 이 해시 처리).
+    await this.userService.updateRefreshToken(user.id, newRefreshToken);
 
     return {
-      refreshToken: hashedRefreshToken,
+      accessToken: token,
+      refreshToken: newRefreshToken,
+      tokenExpires,
     };
   }
 
@@ -188,6 +204,12 @@ export class AuthService {
 
 interface LoginResult {
   user: AuthUserDto;
+  accessToken: string;
+  refreshToken: string;
+  tokenExpires: string;
+}
+
+interface RefreshResult {
   accessToken: string;
   refreshToken: string;
   tokenExpires: string;

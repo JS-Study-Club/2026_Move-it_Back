@@ -1,34 +1,17 @@
 import { Expose, Transform, Type } from 'class-transformer';
-import {
-  IsArray,
-  IsNotEmpty,
-  IsNumber,
-  IsString,
-  ValidateNested,
-} from 'class-validator';
+import { IsArray, ValidateNested } from 'class-validator';
 import { BaseDto } from './base.dto';
 import { Challenge } from '@/challenge/entities/challenge.entity';
 
 export class HomeUserInfo extends BaseDto {
-  @IsString()
-  @IsNotEmpty()
+  userId: string;
   username: string;
-
-  @IsString()
-  @IsNotEmpty()
-  teacherId: string;
-
-  @IsNumber()
-  @IsNotEmpty()
+  teacherId: number;
   level: number;
-
-  @IsNumber()
-  @IsNotEmpty()
   levelXp: number;
-
-  @IsString()
-  @IsNotEmpty()
   levelTitle: string;
+  // 현재 레벨 안에서의 진행률(0~100). 프론트 진행바가 이 값을 사용합니다.
+  levelProgress: number;
 }
 
 export class HighScoreDanceInfoDto extends BaseDto {

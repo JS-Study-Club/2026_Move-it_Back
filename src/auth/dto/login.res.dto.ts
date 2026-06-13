@@ -19,15 +19,16 @@ export class AuthUserDto {
 
   @ApiProperty({ example: '쑥쑥 자라는 댄스신동', required: false })
   levelTitle: string;
+
+  @ApiProperty({ example: 0, description: '현재 레벨 안에서의 진행률(0~100)' })
+  levelProgress: number;
 }
 
 export class LoginResDto {
   @ApiProperty({ type: AuthUserDto })
   user!: AuthUserDto;
 
-  @ApiProperty()
-  accessToken!: string;
-
+  // accessToken 은 응답 body 가 아니라 httpOnly 쿠키로만 전달됩니다(사용자 노출 방지).
   @ApiProperty()
   tokenExpires!: string;
 }
