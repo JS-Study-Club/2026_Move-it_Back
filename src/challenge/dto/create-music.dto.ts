@@ -31,14 +31,38 @@ export class CreateMusicDto {
   length!: number;
 
   @IsString()
-  @IsNotEmpty()
-  @ApiProperty({ description: '음악 URL' })
-  music_url!: string;
+  @IsOptional()
+  @ApiProperty({
+    description: '음악 URL. 미입력 시 artist-name 규칙으로 자동 생성됩니다.',
+    required: false,
+  })
+  music_url?: string;
 
   @IsString()
-  @IsNotEmpty()
-  @ApiProperty({ description: '앨범 아트 URL' })
-  music_image_url!: string;
+  @IsOptional()
+  @ApiProperty({
+    description: '앨범 아트 URL. 미입력 시 artist-name 규칙으로 자동 생성됩니다.',
+    required: false,
+  })
+  music_image_url?: string;
+
+  @IsString()
+  @IsOptional()
+  @ApiProperty({
+    description: '음악 파일 확장자(자동 생성 시). 미입력 시 mp3',
+    required: false,
+    default: 'mp3',
+  })
+  music_ext?: string;
+
+  @IsString()
+  @IsOptional()
+  @ApiProperty({
+    description: '앨범 아트 파일 확장자(자동 생성 시). 미입력 시 webp',
+    required: false,
+    default: 'webp',
+  })
+  image_ext?: string;
 
   @IsDateString()
   @ApiProperty({ description: '음악 발매일', required: false })
@@ -70,6 +94,16 @@ export class CreateMusicDto {
     required: false,
   })
   end_time?: number;
+
+  @IsNumber()
+  @Type(() => Number)
+  @IsOptional()
+  @ApiProperty({
+    description: '촬영(녹화) 길이(초). 미입력 시 20초가 기본값으로 저장됩니다.',
+    required: false,
+    default: 20,
+  })
+  duration?: number;
 
   @IsOptional()
   @ApiProperty({
