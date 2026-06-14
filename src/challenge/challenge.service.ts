@@ -16,9 +16,9 @@ import { HighScoreDanceInfoDto } from '@/pages/dto/page-home.res.dto';
 
 // 미디어 파일 기본 경로 (music_url / music_image_url 자동 생성에 사용)
 const MEDIA_BASE_URL = 'https://minjae1025.duckdns.org/moveit';
-// 파일명 규칙: 전부 소문자 + 공백을 '_' 로. 예) 'Sasane','Mosi Mosi' → 'sasane-mosi_mosi'
+// 파일명 규칙: 대소문자 유지 + 공백을 '_' 로. 예) 'sasane','mosi mosi' → 'sasane-mosi_mosi'
 const buildMediaSlug = (artist: string, name: string): string =>
-  `${artist}-${name}`.trim().toLowerCase().replace(/\s+/g, '_');
+  `${artist}-${name}`.trim().replace(/\s+/g, '_');
 // 사용자가 '.mp3' 처럼 점을 붙여 넣어도 정상 처리되도록 앞쪽 점을 제거
 const stripDot = (ext: string): string => ext.replace(/^\./, '');
 
@@ -70,21 +70,38 @@ export class ChallengeService {
     return this.formatResponse(result);
   }
   async getUserChallenges(userId: number): Promise<HighScoreDanceInfoDto[]> {
-    const challengeData = await this.userChallengeRepository
+    // 유저의 모든 연습 기록을 점수 내림차순으로 가져온다.
+    const rows = await this.userChallengeRepository
       .createQueryBuilder('uc')
       .select([
         'uc.id AS uc_id',
-        'uc.challenge_id AS challenge_id ',
+        'uc.challenge_id AS challenge_id',
         'uc.score AS score',
         'uc.createdAt AS createdAt',
       ])
       .where('uc.user_id = :userId', { userId })
       .orderBy('uc.score', 'DESC')
-      .limit(3)
-      .getRawMany();
+      .getRawMany<{
+        uc_id: number;
+        challenge_id: number;
+        score: number;
+        createdAt: Date;
+      }>();
 
-    const ids = challengeData.map((v) => Number(v.challenge_id));
+    // 같은 챌린지를 여러 번 했어도 "챌린지별 최고점" 1건만 남긴다.
+    // (점수 내림차순으로 정렬돼 있으므로 각 챌린지의 첫 등장이 최고점이다)
+    const bestByChallenge = new Map<number, (typeof rows)[number]>();
+    for (const row of rows) {
+      const cid = Number(row.challenge_id);
+      if (!bestByChallenge.has(cid)) bestByChallenge.set(cid, row);
+    }
 
+    // 챌린지별 최고점을 점수 높은 순으로 정렬한 뒤 최대 5개만 사용한다.
+    const top = Array.from(bestByChallenge.values())
+      .sort((a, b) => Number(b.score) - Number(a.score))
+      .slice(0, 5);
+
+    const ids = top.map((v) => Number(v.challenge_id));
     if (ids.length === 0) {
       return [];
     }
@@ -95,29 +112,28 @@ export class ChallengeService {
       .where('c.id IN (:...ids)', { ids })
       .getMany();
 
-    const challengeMap = new Map(
-      challengeData.map((v) => [Number(v.challenge_id), v]),
-    );
+    const challengeMap = new Map(challenges.map((c) => [c.id, c]));
 
-    return challenges.map((challenge) => {
-      const uc = challengeMap.get(challenge.id);
+    // top 순서(점수 내림차순)를 유지하며 응답 형태로 매핑한다.
+    return top.map((row) => {
+      const challenge = challengeMap.get(Number(row.challenge_id));
 
       return {
-        id: challenge.id,
+        id: challenge?.id ?? Number(row.challenge_id),
         // 피드백 상세(/feedback/:userChallengeId) 진입에 필요한 연습 결과 식별자
-        userChallengeId: uc?.uc_id ?? null,
-        name: challenge.name,
-        title: challenge.title,
-        description: challenge.description,
+        userChallengeId: row.uc_id ?? null,
+        name: challenge?.name ?? '',
+        title: challenge?.title ?? '',
+        description: challenge?.description ?? '',
 
-        artist: challenge.music?.artist ?? '',
-        genre: challenge.music?.genre ?? '',
-        musicUrl: challenge.music?.music_url ?? '',
-        imgUrl: challenge.music?.music_image_url ?? '',
-        releaseDate: challenge.music?.release_date ?? '',
+        artist: challenge?.music?.artist ?? '',
+        genre: challenge?.music?.genre ?? '',
+        musicUrl: challenge?.music?.music_url ?? '',
+        imgUrl: challenge?.music?.music_image_url ?? '',
+        releaseDate: challenge?.music?.release_date ?? '',
 
-        score: uc?.score ?? 0,
-        createdAt: uc?.createdAt ?? '',
+        score: Number(row.score) || 0,
+        createdAt: row.createdAt ?? '',
       };
     });
   }
@@ -185,12 +201,15 @@ export class ChallengeService {
         music_image_url: musicImageUrl,
         release_date: createMusicDto.release_date,
       },
-      // body_data: {
-      //   pose_data: extractedPoseData,
-      // },
+      body_data: {
+        pose_data: extractedPoseData,
+      },
     });
     const saved = await this.challengeRepository.save(challenge);
-    return this.formatResponse(saved);
+    const formattedResponse = this.formatResponse(saved);
+    // 응답에서 body_data는 제외하여 반환합니다.
+    delete formattedResponse.body_data;
+    return formattedResponse;
   }
 
   async searchChallenges(keyword: string) {
