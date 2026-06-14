@@ -40,6 +40,10 @@ export class Challenge {
   @Column({ type: 'int', nullable: true })
   end_time!: number;
 
+  // 촬영(녹화) 길이(초). 미설정(null)이면 서비스/프론트에서 20초를 기본으로 사용한다.
+  @Column({ type: 'int', nullable: true })
+  duration?: number;
+
   @CreateDateColumn()
   createdAt!: Date;
 
