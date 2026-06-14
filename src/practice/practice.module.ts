@@ -12,7 +12,7 @@ import { UserModule } from '../user/user.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      Practice,
+      // Practice,
       ChallengeBodyData,
       UserChallenge,
       User,

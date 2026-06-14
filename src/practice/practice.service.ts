@@ -82,6 +82,10 @@ export class PracticeService {
 
     const savedUserChallenge = await this.userChallengeRepository.save(newUserChallenge);
 
+    // 연습이 완료될 때마다 해당 챌린지의 이용수(view_count)를 1 증가시킨다.
+    // (동시 요청 경쟁 조건을 피하기 위해 원자적 increment 사용)
+    await this.challengeRepository.increment({ id: challengeId }, 'view_count', 1);
+
     // 연습 완료 보상: 점수에 따라 xp 부여 → 레벨업 처리
     const xpGain = getXpReward(totalScore);
     await this.userService.updateLevel(user.id, xpGain);
