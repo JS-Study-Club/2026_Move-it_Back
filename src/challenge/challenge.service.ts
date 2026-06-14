@@ -14,6 +14,14 @@ import { ChallengeMusic } from './entities/challenge-music.entity';
 import { UserChallenge } from '@/user/entities/user_challenge.entity';
 import { HighScoreDanceInfoDto } from '@/pages/dto/page-home.res.dto';
 
+// 미디어 파일 기본 경로 (music_url / music_image_url 자동 생성에 사용)
+const MEDIA_BASE_URL = 'https://minjae1025.duckdns.org/moveit';
+// 파일명 규칙: 전부 소문자 + 공백을 '_' 로. 예) 'Sasane','Mosi Mosi' → 'sasane-mosi_mosi'
+const buildMediaSlug = (artist: string, name: string): string =>
+  `${artist}-${name}`.trim().toLowerCase().replace(/\s+/g, '_');
+// 사용자가 '.mp3' 처럼 점을 붙여 넣어도 정상 처리되도록 앞쪽 점을 제거
+const stripDot = (ext: string): string => ext.replace(/^\./, '');
+
 @Injectable()
 export class ChallengeService {
   private videoPoseExtractor = new VideoPoseExtractorUtil();
@@ -43,23 +51,23 @@ export class ChallengeService {
       // 프론트 썸네일 표시에 사용됩니다.
       music_image_url: music?.music_image_url ?? null,
       release_date: music?.release_date,
+      // 촬영(녹화) 길이(초). 미설정 시 20초 기본.
+      duration: challenge.duration ?? 20,
     };
   }
 
   async getChallenges(id: number) {
-    // const result = await this.challengeRepository.findOne({ where: { id } });
-    const result = await this.challengeRepository
-      .createQueryBuilder('challenges')
-      .innerJoinAndSelect('challenge.music', 'music')
-      .where('challenges.id = :id', { id })
-      .getOne();
+    // music 은 eager 로 로드되므로 findOne 으로 충분합니다.
+    const result = await this.challengeRepository.findOne({
+      where: { id: Number(id) },
+    });
 
     if (!result) {
       throw new NotFoundException('챌린지를 찾을 수 없습니다.');
     }
 
-    // return this.formatResponse(result);
-    return result;
+    // 검색/추천 응답과 동일한 형태(duration, music_url 등 포함)로 내려줍니다.
+    return this.formatResponse(result);
   }
   async getUserChallenges(userId: number): Promise<HighScoreDanceInfoDto[]> {
     const challengeData = await this.userChallengeRepository
@@ -146,6 +154,17 @@ export class ChallengeService {
       }
     }
 
+    // music_url / music_image_url 은 입력이 있으면 그대로, 없으면 artist-name 규칙으로 자동 생성.
+    const slug = buildMediaSlug(createMusicDto.artist, createMusicDto.name);
+    const musicExt = stripDot(createMusicDto.music_ext ?? 'mp3');
+    const imageExt = stripDot(createMusicDto.image_ext ?? 'webp');
+    const musicUrl =
+      createMusicDto.music_url ??
+      `${MEDIA_BASE_URL}/music/${slug}.${musicExt}`;
+    const musicImageUrl =
+      createMusicDto.music_image_url ??
+      `${MEDIA_BASE_URL}/album_art/${slug}.${imageExt}`;
+
     const challenge = this.challengeRepository.create({
       name: createMusicDto.name,
       // title 컬럼은 NOT NULL 이지만 생성 DTO에 별도 title 입력이 없어 곡명을 사용합니다.
@@ -156,12 +175,14 @@ export class ChallengeService {
       score: 0,
       start_time: createMusicDto.start_time || 0,
       end_time: createMusicDto.end_time || undefined,
+      // 촬영(녹화) 길이(초). 미입력 시 20초를 기본으로 저장.
+      duration: createMusicDto.duration ?? 20,
       music: {
         genre: createMusicDto.genre,
         artist: createMusicDto.artist,
         length: createMusicDto.length,
-        music_url: createMusicDto.music_url,
-        music_image_url: createMusicDto.music_image_url,
+        music_url: musicUrl,
+        music_image_url: musicImageUrl,
         release_date: createMusicDto.release_date,
       },
       // body_data: {
