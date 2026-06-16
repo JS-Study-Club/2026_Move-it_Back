@@ -28,33 +28,15 @@ export class AuthService {
 
   async login(loginDto: LoginReqDto): Promise<LoginResult> {
     const user = await this.userService.findByUserId(loginDto.userId);
-    if (!user) {
-      throw new UnprocessableEntityException({
-        status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: {
-          userId: '존재하지 않는 아이디입니다.',
-        },
-      });
-    }
-    if (!user.password || user.password === undefined) {
-      throw new UnprocessableEntityException({
-        status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: {
-          password: '비밀번호가 설정되지 않은 계정입니다.',
-        },
-      });
+    if (!user || user === null) {
+      throw new UnprocessableEntityException('존재하지 않는 아이디입니다.');
     }
     const isPasswordValid = await bcrypt.compare(
       loginDto.password.trim(),
       user.password,
     );
     if (!isPasswordValid) {
-      throw new UnprocessableEntityException({
-        status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: {
-          password: '비밀번호가 올바르지 않습니다.',
-        },
-      });
+      throw new UnprocessableEntityException('아이디 혹은 비밀번호가 일치하지 않습니다.');
     }
     const { accessPayload, refreshPayload } = this.getPayloadsData(user.id);
     const { token, refreshToken, tokenExpires } = await this.getTokensData(
@@ -72,8 +54,6 @@ export class AuthService {
       user.level_xp ?? 0,
     );
 
-    // 프론트엔드가 기대하는 camelCase 형태로 명시적으로 매핑합니다.
-    // (UserResDto 의 @Expose({ name }) 가 원본 키로 되돌아가는 문제 회피 + 민감정보 미노출)
     const userPayload: AuthUserDto = {
       userId: user.user_id,
       username: user.username,
@@ -96,7 +76,7 @@ export class AuthService {
     // user_id 는 unique 이므로, 이미 존재하면 아이디 중복으로 처리합니다.
     const existingUser = await this.userService.findByUserId(dto.userId);
     if (existingUser) {
-      throw new ConflictException({ message: '이미 사용 중인 아이디입니다' });
+      throw new ConflictException('이미 사용 중인 아이디입니다');
     }
     // 이메일 중복은 userService.create 내부에서 검증/예외 처리됩니다.
     await this.userService.create({
@@ -115,9 +95,7 @@ export class AuthService {
   ): Promise<RefreshResult> {
     const user = await this.userService.findById(id);
     if (user === null) {
-      throw new UnauthorizedException({
-        message: '로그아웃 혹은 존재하지 않는 사용자',
-      });
+      throw new UnauthorizedException('로그아웃 혹은 존재하지 않는 사용자입니다.');
     }
     const dbRfToken = await this.userService.findRefreshTokenById(id);
     if (!dbRfToken) {
@@ -132,7 +110,7 @@ export class AuthService {
     );
 
     if (!isRefreshTokenMatch) {
-      throw new UnauthorizedException({ message: '다시 로그인 해주세요' }); // 잘못된 리프레시 토큰
+      throw new UnauthorizedException('다시 로그인 해주세요'); // 잘못된 리프레시 토큰
     }
 
     const { accessPayload, refreshPayload } = this.getPayloadsData(id);

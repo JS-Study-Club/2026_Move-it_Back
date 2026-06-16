@@ -64,12 +64,7 @@ export class UserService {
     if (dto.email) {
       const userObj = await this.userRepository.findOneBy({ email: dto.email });
       if (userObj) {
-        throw new UnprocessableEntityException({
-          status: HttpStatus.UNPROCESSABLE_ENTITY,
-          errors: {
-            email: '이미 가입된 이메일',
-          },
-        });
+        throw new UnprocessableEntityException('이미 가입된 이메일');
       }
     }
     email = dto.email;
@@ -118,12 +113,7 @@ export class UserService {
         email: dto.email,
       });
       if (userObject && userObject.id !== id) {
-        throw new UnprocessableEntityException({
-          status: HttpStatus.UNPROCESSABLE_ENTITY,
-          errors: {
-            email: 'emailAlreadyExists',
-          },
-        });
+        throw new UnprocessableEntityException('이미 가입된 이메일');
       }
       email = dto.email;
     }
