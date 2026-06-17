@@ -8,8 +8,8 @@ export class AuthUserDto {
   @ApiProperty({ example: '민바오' })
   username: string;
 
-  @ApiProperty({ example: 1 })
-  teacherId: number;
+  @ApiProperty({ example: 1, nullable: true })
+  teacherId: number | null;
 
   @ApiProperty({ example: 1 })
   level: number;

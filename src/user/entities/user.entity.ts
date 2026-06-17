@@ -30,8 +30,8 @@ export class User {
   @Column('varchar', { length: 255 })
   password!: string;
 
-  @Column({ type: 'int' })
-  teacher_character_id!: number;
+  @Column({ type: 'int', nullable: true })
+  teacher_character_id!: number | null;
 
   // 현재 레벨 (1~).
   @Column({ type: 'int', default: 1 })

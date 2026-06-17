@@ -21,7 +21,7 @@ describe('HttpExceptionFilter', () => {
     } as unknown as ArgumentsHost;
 
     const filter = new HttpExceptionFilter();
-    const exception = new BadRequestException('유효하지 않은 여행 예산입니다.');
+    const exception = new BadRequestException('유효하지 않은 정보입니다.');
 
     filter.catch(exception, host);
 
@@ -32,8 +32,8 @@ describe('HttpExceptionFilter', () => {
         status: HttpStatus.BAD_REQUEST,
         error: expect.objectContaining({
           code: 'BAD_REQUEST',
-          message: '유효하지 않은 여행 예산입니다.',
-          reason: '유효하지 않은 여행 예산입니다.',
+          message: '유효하지 않은 정보입니다.',
+          reason: '유효하지 않은 정보입니다.',
         }),
       }),
     );
