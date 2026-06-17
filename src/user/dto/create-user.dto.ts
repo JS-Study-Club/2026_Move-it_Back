@@ -3,7 +3,9 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   // decorators here
   IsEmail,
+  IsInt,
   IsNotEmpty,
+  IsOptional,
   MinLength,
 } from 'class-validator';
 import { lowerCaseTransformer } from '../../auth/utils/transformers/lower-case.transformer';
@@ -28,8 +30,9 @@ export class CreateUserDto {
   @MinLength(6)
   password: string;
 
-  @IsNotEmpty() //TODO :  Id validation
-  teacherId: number;
+  @IsOptional()
+  @IsInt()
+  teacherId?: number;
 
   @Optional()
   refreshToken?: string;

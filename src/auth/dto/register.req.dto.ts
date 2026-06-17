@@ -1,7 +1,9 @@
 import {
   Allow,
   IsEmail,
+  IsInt,
   IsNotEmpty,
+  IsOptional,
   MaxLength,
   MinLength,
   Matches,
@@ -50,7 +52,8 @@ export class RegisterReqDto {
   })
   password: string;
 
-  @ApiProperty({ example: '1', type: 'integer' })
-  @IsNotEmpty()
-  teacherId: number;
+  @ApiProperty({ example: '1', type: 'integer', required: false })
+  @IsOptional()
+  @IsInt()
+  teacherId?: number;
 }

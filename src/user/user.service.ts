@@ -73,7 +73,7 @@ export class UserService {
       email: email,
       user_id: dto.userId,
       password: hashedPassword,
-      teacher_character_id: dto.teacherId,
+      teacher_character_id: dto.teacherId ?? null,
     });
     return await this.userRepository.save(newUser);
   }
