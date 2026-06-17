@@ -19,8 +19,8 @@ export class Challenge {
   @Column()
   name!: string;
 
-  @Column()
-  title!: string;
+  // @Column()
+  // title!: string;
 
   @Column({ default: 0 })
   view_count!: number;
@@ -53,7 +53,10 @@ export class Challenge {
   @Column({ type: 'int', nullable: false })
   score!: number;
 
-  @ManyToOne(() => ChallengeMusic, (music) => music.challenges, {
+  @Column({ type: 'text', nullable: true })
+  video_url?: string;
+
+  @OneToOne(() => ChallengeMusic, (music) => music.challenges, {
     cascade: true,
     eager: true,
   })

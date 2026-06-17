@@ -36,6 +36,14 @@ export class PoseEvaluator {
   private static readonly MIN_VALID_POINTS = 6; // 프레임당 최소 비교 가능 관절 수
   private static readonly MATCH_TOLERANCE = 0.25; // 초 — 프레임 매칭 허용 시간 오차
   private static readonly DEFAULT_FPS = 10; // 타임스탬프가 없을 때의 폴백 fps
+  // 정확도 거리(몸통 길이 단위)를 점수로 바꿀 때의 관용도.
+  // 거리 불변성은 "몸통 길이 정규화"가 담당하므로(같은 자세면 거리와 무관하게 거리=0),
+  // 이 값은 멀리 있을 때의 미세한 좌표 지터(≈0.05몸통)만 흡수하면 됩니다.
+  // 너무 크게 두면 어설픈 자세까지 만점에 붙어 변별력이 사라지므로 1.0 근처로 둡니다.
+  private static readonly ACCURACY_TOLERANCE = 1.05;
+  // 손목/발목 평균 속도(몸통 길이/초)가 이 값을 넘으면 "춤추고 있다"고 판단.
+  // 몸통 길이 단위라 카메라 거리와 무관하게 동일 기준으로 움직임을 감지합니다.
+  private static readonly MOVEMENT_THRESHOLD = 0.5;
   // 시작 싱크가 어긋나도 맞춰볼 전역 오프셋 후보: -0.3s ~ +0.3s
   // (카운트다운 후 녹화가 시작되므로 실제 지연은 이 범위 안. 더 넓히면
   //  반박자씩 틀린 춤까지 용서하게 되어 리듬 평가가 무력화됩니다)
@@ -109,10 +117,22 @@ export class PoseEvaluator {
     let rhythmScore = rhythmCount > 0 ? (rhythmSum / rhythmCount) * 100 : 0;
     let expressionScore = Math.min(100, Math.max(0, expressionRatio * 100));
 
-    // Tuned heuristics to produce realistic output bounds (min 40, max 100)
-    accuracyScore = this.normalizeScore(accuracyScore, 50, 100, 1.2);
-    rhythmScore = this.normalizeScore(rhythmScore, 50, 100, 1.3);
-    expressionScore = this.normalizeScore(expressionScore, 40, 100, 1.0);
+    // 사용자가 실제로 "춤을 췄는지"를 손목/발목 평균 속도로 판단합니다.
+    // (몸통 길이/초 단위라 카메라 거리와 무관)
+    const isMoving = userSpeed > this.MOVEMENT_THRESHOLD;
+
+    // 점수를 후하게: 가만히 서 있지만 않으면(움직였다면) 모든 항목 최소 50점을 보장해
+    // 총점이 50점 이상이 되도록 합니다. 반대로 가만히 있으면 낮은 하한을 적용해
+    // "춤을 췄는지"에 대한 변별력을 유지합니다.
+    const floor = isMoving ? 50 : 30;
+    const expressionFloor = isMoving ? 50 : 20;
+
+    // 정확도는 부스트를 주지 않습니다(1.0). 부스트를 주면 어설픈 자세도 100에
+    // 붙어버려(천장 포화) 변별력이 사라지기 때문입니다. 자세가 맞을수록 점수가
+    // 자연스럽게 올라가, 리듬/표현력과 함께 실력에 비례해 움직이게 됩니다.
+    accuracyScore = this.normalizeScore(accuracyScore, floor, 100, 1.0);
+    rhythmScore = this.normalizeScore(rhythmScore, floor, 100, 1.3);
+    expressionScore = this.normalizeScore(expressionScore, expressionFloor, 100, 1.15);
 
     return {
       rhythm: Math.round(rhythmScore),
@@ -167,8 +187,16 @@ export class PoseEvaluator {
 
     // 몸통 길이(어깨 중점~엉덩이 중점)를 기준 단위로 사용해
     // 화면상 인물 크기(카메라 거리) 차이를 제거합니다.
-    const torso = Math.hypot(midShoulderX - midHipX, midShoulderY - midHipY);
-    if (torso < 1e-4) return null;
+    const torsoHeight = Math.hypot(midShoulderX - midHipX, midShoulderY - midHipY);
+    // 몸을 숙이거나(원근 단축) 멀리 있어 어깨~엉덩이 길이가 일시적으로 짧아져도
+    // 정규화 좌표가 폭주하지 않도록, 어깨너비 기반 추정값을 하한으로 둡니다.
+    // 정면 기립 시엔 몸통 길이 ≈ 어깨너비 × 1.5 라 정상 상황에선 torsoHeight 가 그대로 쓰입니다.
+    const shoulderWidth = Math.hypot(
+      leftShoulder.x - rightShoulder.x,
+      leftShoulder.y - rightShoulder.y,
+    );
+    const scale = Math.max(torsoHeight, shoulderWidth * 1.5);
+    if (scale < 1e-4) return null;
 
     const points = this.KEY_POINTS.map((idx) => {
       const srcIdx = mirror ? this.MIRROR_MAP[idx] : idx;
@@ -176,8 +204,8 @@ export class PoseEvaluator {
       if (!p) return null;
       if (p.v !== undefined && p.v < this.VISIBILITY_MIN) return null;
 
-      const x = ((p.x - midHipX) / torso) * (mirror ? -1 : 1);
-      const y = (p.y - midHipY) / torso;
+      const x = ((p.x - midHipX) / scale) * (mirror ? -1 : 1);
+      const y = (p.y - midHipY) / scale;
       return { x, y };
     });
 
@@ -275,9 +303,10 @@ export class PoseEvaluator {
     if (count < this.MIN_VALID_POINTS) return null;
 
     const avgDist = distanceSum / count;
-    // 몸통 길이 단위 거리: 0 → 일치(1점), 평균 1몸통 길이 이상 어긋나면 0점.
-    // (크기 정규화로 카메라 거리 노이즈가 제거되었으므로 이전보다 엄격하게 둡니다)
-    return Math.max(0, 1 - avgDist);
+    // 몸통 길이 단위 거리를 점수로 변환: 0 → 일치(1점), 관용도 배수만큼 어긋나면 0점.
+    // ACCURACY_TOLERANCE 로 나눠 완만하게 떨어지므로, 멀리 있어 좌표 지터가 큰
+    // 사용자도 과도하게 깎이지 않아 거리에 따른 결과 차이가 줄어듭니다.
+    return Math.max(0, 1 - avgDist / this.ACCURACY_TOLERANCE);
   }
 
   private static velocityMatch(prev: Pair, curr: Pair): number | null {
