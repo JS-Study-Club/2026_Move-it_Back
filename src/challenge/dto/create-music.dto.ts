@@ -108,6 +108,22 @@ export class CreateMusicDto {
   @IsOptional()
   @ApiProperty({
     type: 'string',
+    required: false,
+    description: '가이드 영상 링크',
+  })
+  video_url?: any;
+
+  @IsOptional()
+  @ApiProperty({
+    type: 'string',
+    required: false,
+    description: '가이드 영상 파일 확장자(자동 생성 시). 미입력 시 mp4',
+  })
+  video_ext?: string;
+
+  @IsOptional()
+  @ApiProperty({
+    type: 'string',
     format: 'binary',
     required: false,
     description: '업로드할 챌린지 영상 파일',

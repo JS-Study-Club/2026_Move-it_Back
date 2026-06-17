@@ -123,7 +123,7 @@ export class ChallengeService {
         // 피드백 상세(/feedback/:userChallengeId) 진입에 필요한 연습 결과 식별자
         userChallengeId: row.uc_id ?? null,
         name: challenge?.name ?? '',
-        title: challenge?.title ?? '',
+        // title: challenge?.title ?? '',
         description: challenge?.description ?? '',
 
         artist: challenge?.music?.artist ?? '',
@@ -172,19 +172,22 @@ export class ChallengeService {
 
     // music_url / music_image_url 은 입력이 있으면 그대로, 없으면 artist-name 규칙으로 자동 생성.
     const slug = buildMediaSlug(createMusicDto.artist, createMusicDto.name);
-    const musicExt = stripDot(createMusicDto.music_ext ?? 'mp3');
-    const imageExt = stripDot(createMusicDto.image_ext ?? 'webp');
+    const musicExt = stripDot(createMusicDto.music_ext?.trim() || 'mp3');
+    const imageExt = stripDot(createMusicDto.image_ext?.trim() || 'webp');
+    const videoExt = stripDot(createMusicDto.video_ext?.trim() || 'mp4'); // 업로드된 영상이 있으면 mp4로 간주
     const musicUrl =
-      createMusicDto.music_url ??
+      createMusicDto.music_url ||
       `${MEDIA_BASE_URL}/music/${slug}.${musicExt}`;
     const musicImageUrl =
-      createMusicDto.music_image_url ??
+      createMusicDto.music_image_url ||
       `${MEDIA_BASE_URL}/album_art/${slug}.${imageExt}`;
+    const videoUrl = createMusicDto.video_url ||
+      `${MEDIA_BASE_URL}/video/${slug}.${videoExt}`;
 
     const challenge = this.challengeRepository.create({
       name: createMusicDto.name,
       // title 컬럼은 NOT NULL 이지만 생성 DTO에 별도 title 입력이 없어 곡명을 사용합니다.
-      title: createMusicDto.name,
+      //title: createMusicDto.name,
       description: createMusicDto.description,
       difficulty: createMusicDto.difficulty,
       // score 컬럼도 NOT NULL 이므로 기본값 0으로 채웁니다.
@@ -193,6 +196,7 @@ export class ChallengeService {
       end_time: createMusicDto.end_time || undefined,
       // 촬영(녹화) 길이(초). 미입력 시 20초를 기본으로 저장.
       duration: createMusicDto.duration ?? 20,
+      video_url: videoUrl,
       music: {
         genre: createMusicDto.genre,
         artist: createMusicDto.artist,
@@ -218,6 +222,9 @@ export class ChallengeService {
       .leftJoinAndSelect('challenge.music', 'music')
       .where('challenge.name ILIKE :keyword', { keyword: `%${keyword}%` })
       .orWhere('music.artist ILIKE :keyword', { keyword: `%${keyword}%` })
+      .orWhere('music.genre ILIKE :keyword', { keyword: `%${keyword}%` })
+      .orWhere('challenge.description ILIKE :keyword', { keyword: `%${keyword}%` })
+      .orderBy('challenge.view_count', 'DESC')
       .getMany();
 
     return result.map((c) => this.formatResponse(c));
@@ -255,7 +262,7 @@ export class ChallengeService {
     return challenges.map((challenge) => ({
       id: challenge.id,
       name: challenge.name,
-      title: challenge.title,
+      //title: challenge.title,
       description: challenge.description,
 
       viewCount: challenge.view_count,
