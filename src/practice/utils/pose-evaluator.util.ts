@@ -131,7 +131,10 @@ export class PoseEvaluator {
     // 붙어버려(천장 포화) 변별력이 사라지기 때문입니다. 자세가 맞을수록 점수가
     // 자연스럽게 올라가, 리듬/표현력과 함께 실력에 비례해 움직이게 됩니다.
     accuracyScore = this.normalizeScore(accuracyScore, floor, 100, 1.0);
-    rhythmScore = this.normalizeScore(rhythmScore, floor, 100, 1.3);
+    // 리듬은 사람이 속도까지 정확히 맞추기 어려워 기준을 후하게(부스트↑) 둡니다.
+    // 부스트는 곱셈이라, 실제로 춘 사람의 중간대 점수는 끌어올리면서도
+    // 거의 안 움직인(원점수≈0) 사람은 여전히 낮게 유지됩니다.
+    rhythmScore = this.normalizeScore(rhythmScore, floor, 100, 1.5);
     expressionScore = this.normalizeScore(expressionScore, expressionFloor, 100, 1.15);
 
     return {
